@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>One-to-One Call Integrado</title>
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+  <style>
+     body {
+      margin: 0;
+      font-family: sans-serif;
+      background: rgba(58, 70, 96, 0.2);
+    }
+    .call-window {
+      display: flex;
+      height: 100vh;
+    }
+    .sidebar {
+      background: linear-gradient(to bottom, #ffffff, #0a2b5c);
+      padding: 20px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      width: 1px;
+      overflow: hidden;
+      transition: width 0.4s ease;
+      border-top-left-radius: 10px;
+      border-bottom-left-radius: 10px;
+    }
+    .sidebar:hover { width: 60px; }
+    .sidebar .side-btn {
+      background: #2c2f36;
+      color: white;
+      width: 50px; height: 50px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; opacity: 0;
+      transition: opacity 0.3s ease, background 0.3s ease;
+      border: none; cursor: pointer;
+    }
+    .sidebar:hover .side-btn { opacity: 1; }
+    .sidebar .side-btn:hover { background: #3a3f46; }
+    .end-call { background: red !important; }
+    .main-call {
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #ffffff, #0a2b5c);
+      transition: all 0.4s ease;
+      height: 100vh;
+    }
+    .video-area {
+      flex: 1;
+      min-width: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      border-radius: 20px 0 0 20px; /* Solo borde redondeado a la izquierda */
+      overflow: hidden;
+    }
+    .video-main, .video-mini, .screen-share {
+      background: linear-gradient(to bottom, #1f2634, #3a4660);
+      border: 2px solid #fff; border-radius: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.4s ease; overflow: hidden;
+      animation: pulse-border 2s infinite;
+      position: absolute;
+    }
+    .video-main {
+      background: linear-gradient(to bottom, #0a2b5c, #ffffff);
+      width: 98%; height: 99%;
+      top: 0; left: 0;
+      position: absolute;
+    }
+    .video-mini {
+      background: linear-gradient(to bottom, #ffffff, #0a2b5c);
+      width: 200px; height: 120px;
+      bottom: 30px; right: 50px;
+      border-radius: 12px;
+      position: absolute;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .screen-share {
+      display: none;
+      justify-content: center; align-items: center;
+      color: white; font-size: 24px; padding: 20px;
+      box-sizing: border-box; text-align: center;
+      width: 100%; height: 100%; border-radius: 20px;
+      background: linear-gradient(to bottom, #1f2634, #3a4660);
+      border: 2px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      top: 0; left: 0;
+      position: absolute;
+      z-index: 1;
+    }
+    .avatar {
+      position: absolute;
+      background: rgba(255,255,255,0.2);
+      border: 2px solid white; color: white;
+      width: 60px; height: 60px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px); animation: pulse-border 2s infinite;
+      left: 50%; top: 50%; transform: translate(-50%, -50%);
+      z-index: 2;
+      font-size: 20px;
+    }
+    .video-main .avatar { width: 80px; height: 80px; font-size: 24px; }
+    @keyframes pulse-border {
+      0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
+      100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    }
+    .mini-name {
+      position: absolute; bottom: 8px; left: 8px;
+      background: rgba(0,0,0,0.6); color: white;
+      padding: 2px 6px; border-radius: 6px;
+      font-size: 10px; z-index: 2;
+    }
+
+    /* -------- PANEL DE MINIATURAS CENTRADO Y FIJO A LA DERECHA -------- */
+  .miniaturas-panel {
+  display: none;
+  margin-top: 30px;
+  flex-direction: column;
+  align-items: center;        /* o flex-start si quieres pegadas a la izquierda */
+  justify-content: flex-start; /* PEGADAS ARRIBA */
+  gap: 10px;
+  width: 250px;
+  height: 100vh;
+  background: transparent;
+  z-index: 10;
+}
+.miniaturas-panel .video-mini {
+  position: relative !important;
+  margin: 0;
+  margin-left: 100px;   /* mueve cada miniatura a la izquierda dentro del panel */
+  width: 220px;
+  height: 130px;
+  border-radius: 16px;
+  box-sizing: border-box;
+  background: linear-gradient(to bottom, #1f2634, #3a4660);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+    .miniaturas-panel .avatar {
+      width: 60px; height: 60px; font-size: 22px;
+      left: 50%; top: 38%;
+      transform: translate(-50%, -50%);
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      background: transparent;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      box-shadow: 0 0 0 2px #fff4, 0 0 15px #fff4;
+    }
+    .miniaturas-panel .mini-name {
+      position: absolute;
+      left: 12px; bottom: 12px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    /* Oculta los videos flotantes en pantalla compartida */
+    .main-call.screen-mode .video-area .video-main,
+    .main-call.screen-mode .video-area .video-mini {
+      display: none !important;
+    }
+    .main-call.screen-mode .screen-share {
+      display: flex !important;
+    }
+    /* Muestra las miniaturas SOLO en screen-mode */
+    .main-call.screen-mode .miniaturas-panel {
+      display: flex;
+    }
+    /* Miniatura flotante sólo en modo normal */
+    .main-call:not(.screen-mode) .video-area .video-mini {
+      display: flex;
+    }
+    .main-call.screen-mode .video-area .video-mini {
+      display: none !important;
+    }
+    /* Ocultar miniaturas panel fuera de screen-mode */
+    .main-call:not(.screen-mode) .miniaturas-panel {
+      display: none !important;
+    }
+    /* Ajusta el chat para que esté a la derecha si está activo */
+    .call-chat {
+      width: 0; transition: width 0.4s ease; overflow: hidden;
+      background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
+      border-left: 2px solid rgba(255,255,255,0.15);
+      border-top-left-radius: 20px; border-bottom-left-radius: 20px;
+      display: flex; flex-direction: column;
+      height: 100vh;
+    }
+    .call-chat.active { width: 300px; }
+    .chat-header {
+      padding: 15px; color: black; font-weight: bold;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .chat-messages {
+      flex: 1; padding: 10px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .chat-message { display: flex; }
+    .chat-message.user { justify-content: flex-end; }
+    .chat-message.remote { justify-content: flex-start; }
+    .bubble {
+      max-width: 70%; padding: 10px; border-radius: 16px;
+      background: rgba(255,255,255,0.7); color: #333; word-wrap: break-word;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    .chat-message.user .bubble { background: #3a4660; color: white; }
+    .chat-input {
+      display: flex; padding: 10px; gap: 5px;
+    }
+    .chat-input input {
+      flex: 1; padding: 8px; border: none; border-radius: 5px;
+    }
+    .chat-input button {
+      padding: 8px 12px; background: #3a4660;
+      border: none; color: white; border-radius: 5px; cursor: pointer;
+    }
+    #emojiPanel {
+      position: absolute; top: 80px; left: 20px;
+      background: rgba(255,255,255,0.8); padding: 10px;
+      border-radius: 12px; display: none; flex-wrap: wrap;
+      max-width: 150px; z-index: 999;
+    }
+    .emoji-float {
+      position: fixed; top:50%; left:50%;
+      transform: translate(-50%,-50%) scale(0);
+      opacity:0; font-size:100px; pointer-events:none;
+      transition: all 0.5s ease; z-index:9999;
+    }
+    .emoji-float.show {
+      transform: translate(-50%,-50%) scale(1); opacity:1;
+    }
+  </style>
+</head>
+<body>
+ <div class="call-window">
+    <aside class="sidebar">
+      <button class="side-btn" id="chatToggle"><i class="ph ph-chat-centered-dots"></i></button>
+      <button class="side-btn toggle-camera" data-active="true"><i class="ph ph-camera"></i></button>
+      <button class="side-btn toggle-mic" data-active="true"><i class="ph ph-microphone"></i></button>
+      <button class="side-btn" id="screenToggle"><i class="ph ph-monitor"></i></button>
+      <button class="side-btn toggle-emoji" id="emojiToggle"><i class="ph ph-smiley"></i></button>
+      <button class="side-btn end-call"><i class="ph ph-phone-disconnect"></i></button>
+	  
+	  
+	  <div style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 5px;">
+  <input id="remoteIdInput" type="text" placeholder="ID remoto" style="width: 90%; padding: 4px; border-radius: 6px; border: none; text-align: center;" />
+  <button id="btnLlamar" class="side-btn" style="width: 90%; font-size: 14px; padding: 6px;">Llamar</button>
+</div>
+
+	  
+    </aside>
+
+    <main class="main-call" id="mainCall">
+      <div id="emojiPanel">
+        <span>😀</span><span>😂</span><span>😍</span><span>👍</span>
+        <span>😭</span><span>😡</span><span>😎</span><span>🙌</span>
+        <span>👏</span><span>🔥</span><span>💯</span><span>❤️</span>
+      </div>
+
+      <div class="video-area">
+        <div class="screen-share">Compartiendo pantalla</div>
+        <!-- Video principal grande (normal mode) -->
+        <div class="video-main">
+          <video id="remoteVideo" autoplay></video>
+          <div class="avatar">DA</div>
+          <div class="mini-name">Daniel</div>
+        </div>
+        <!-- Miniatura flotante abajo derecha (normal mode) -->
+        <div class="video-mini">
+          <video id="localVideo" autoplay muted></video>
+          <div class="avatar">YM</div>
+          <div class="mini-name">Yolanda</div>
+        </div>
+      </div>
+
+      <!-- Miniaturas en screen-mode, CENTRADAS Y VERTICALES, NO SE MONTAN -->
+      <div class="miniaturas-panel" id="miniaturasPanel">
+        <div class="video-mini">
+          <div class="avatar">DA</div>
+          <div class="mini-name">Daniel</div>
+        </div>
+        <div class="video-mini">
+          <div class="avatar">YM</div>
+          <div class="mini-name">Yolanda</div>
+        </div>
+      </div>
+
+      <div class="call-chat" id="callChat">
+        <div class="chat-header">Chat de llamada</div>
+        <div class="chat-messages">
+          <div class="chat-message remote"><div class="bubble">Hola, revisa esta imagen:</div></div>
+          <div class="chat-message remote">
+            <div class="bubble">
+              <img src="data:image/jpeg;base64,..." alt="Imagen compartida" style="width:100%;border-radius:8px;" />
+            </div>
+          </div>
+          <div class="chat-message user"><div class="bubble">Listo, ¿me puedes pasar el archivo?</div></div>
+        </div>
+        <div class="chat-input">
+          <input type="text" placeholder="Escribe un mensaje..." />
+          <button>Enviar</button>
+        </div>
+      </div>
+    </main>
+    
+    <div class="emoji-float" id="emojiFloat"></div>
+  </div>
+
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <script>
+        // Variables de control general
+    const chatButton = document.getElementById('chatToggle');
+    const callChat = document.getElementById('callChat');
+    const mainCall = document.getElementById('mainCall');
+    const emojiToggle = document.getElementById('emojiToggle');
+    const emojiPanel = document.getElementById('emojiPanel');
+    const emojiFloat = document.getElementById('emojiFloat');
+    const screenToggle = document.getElementById('screenToggle');
+    const localVideo = document.getElementById("localVideo");
+    const remoteVideo = document.getElementById("remoteVideo");
+
+    let localStream = null;
+    let remoteStream = null;
+    let pc = null;
+    let connection = null;
+    let localUserId = null;
+    let remoteUserId = null;
+    let pendingCandidates = [];
+
+    function createPeerConnection() {
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      });
+      remoteStream = new MediaStream();
+      remoteVideo.srcObject = remoteStream;
+      pc.onicecandidate = event => {
+        if (event.candidate) sendSignal("candidate", event.candidate);
+      };
+      pc.ontrack = event => {
+        event.streams[0].getTracks().forEach(track => {
+          if (!remoteStream.getTracks().some(t => t.id === track.id)) {
+            remoteStream.addTrack(track);
+          }
+        });
+      };
+      pc.onconnectionstatechange = () => {
+        if (["disconnected", "closed", "failed"].includes(pc.connectionState)) {
+          hangupCall();
+        }
+      };
+      return pc;
+    }
+
+    async function iniciarConexion(userId) {
+      localUserId = userId;
+      connection = new signalR.HubConnectionBuilder()
+        .withUrl(`https://signalr2.onrender.com/chathub?userId=${userId}`)
+        .configureLogging(signalR.LogLevel.Information)
+        .build();
+      connection.on("RecibirOferta", async (json, emisorId) => {
+        const data = JSON.parse(json);
+        remoteUserId = emisorId;
+        if (pc) hangupCall(false);
+        pc = createPeerConnection();
+        if (!localStream) {
+          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          localVideo.srcObject = localStream;
+        }
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+        await pc.setRemoteDescription(new RTCSessionDescription(data));
+        if (pendingCandidates.length > 0) {
+          for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
+          pendingCandidates = [];
+        }
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        sendSignal("answer", answer);
+      });
+      connection.on("RecibirRespuesta", async (json) => {
+        const data = JSON.parse(json);
+        if (!pc) return;
+        await pc.setRemoteDescription(new RTCSessionDescription(data));
+        if (pendingCandidates.length > 0) {
+          for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
+          pendingCandidates = [];
+        }
+      });
+      connection.on("RecibirIceCandidate", async (json) => {
+        const data = JSON.parse(json);
+        if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+          await pc.addIceCandidate(new RTCIceCandidate(data));
+        } else {
+          pendingCandidates.push(data);
+        }
+      });
+      try {
+        await connection.start();
+        console.log("Conectado a SignalR");
+      } catch (err) {
+        alert("Error conexión SignalR: " + err);
+      }
+    }
+
+    function sendSignal(type, data) {
+      if (!remoteUserId || !connection) return;
+      const payload = JSON.stringify(data);
+      switch (type) {
+        case "offer": connection.invoke("EnviarOferta", remoteUserId, payload); break;
+        case "answer": connection.invoke("EnviarRespuesta", remoteUserId, payload); break;
+        case "candidate": connection.invoke("EnviarIceCandidate", remoteUserId, payload); break;
+      }
+    }
+
+    async function startCall(remoteId) {
+      if (!connection || connection.state !== "Connected") {
+        alert("Primero debes iniciar la conexión"); return;
+      }
+      remoteUserId = remoteId;
+      if (pc) hangupCall(false);
+      pc = createPeerConnection();
+      if (!localStream) {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = localStream;
+      }
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      sendSignal("offer", offer);
+    }
+
+    function hangupCall() {
+      if (pc) { pc.close(); pc = null; }
+      if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
+      if (remoteStream) { remoteStream.getTracks().forEach(track => track.stop()); remoteStream = null; }
+      localVideo.srcObject = null;
+      remoteVideo.srcObject = null;
+    }
+
+    chatButton.addEventListener('click', () => {
+      callChat.classList.toggle('active');
+      mainCall.classList.toggle('chat-open');
+    });
+
+    document.querySelector('.toggle-camera').addEventListener('click', function(){
+      const icon = this.querySelector('i');
+      const on = this.getAttribute('data-active')==='true';
+      icon.className = on ? 'ph ph-camera-slash' : 'ph ph-camera';
+      this.setAttribute('data-active', !on);
+      if (!localStream) return;
+      const video = localStream.getVideoTracks()[0];
+      if (video) video.enabled = !video.enabled;
+    });
+
+    document.querySelector('.toggle-mic').addEventListener('click', function(){
+      const icon = this.querySelector('i');
+      const on = this.getAttribute('data-active')==='true';
+      icon.className = on ? 'ph ph-microphone-slash' : 'ph ph-microphone';
+      this.setAttribute('data-active', !on);
+      if (!localStream) return;
+      const audio = localStream.getAudioTracks()[0];
+      if (audio) audio.enabled = !audio.enabled;
+    });
+
+    document.querySelector('.end-call').onclick = () => {
+      hangupCall();
+    };
+
+    emojiToggle.addEventListener('click', e=>{
+      emojiPanel.style.display = emojiPanel.style.display==='flex'?'none':'flex';
+      e.stopPropagation();
+    });
+
+    emojiPanel.querySelectorAll('span').forEach(s=>{
+      s.addEventListener('click', ()=>{
+        emojiFloat.textContent = s.textContent;
+        emojiFloat.classList.add('show');
+        emojiPanel.style.display='none';
+        setTimeout(()=> emojiFloat.classList.remove('show'),1500);
+      });
+    });
+
+    window.addEventListener('click', e=>{
+      if(!emojiPanel.contains(e.target)&&!emojiToggle.contains(e.target))
+        emojiPanel.style.display='none';
+    });
+
+    screenToggle.onclick = async () => {
+      if (!localStream || !pc) {
+        mainCall.classList.toggle("screen-mode");
+        return;
+      }
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const sender = pc.getSenders().find(s => s.track && s.track.kind === "video");
+        if (sender && screenStream.getVideoTracks().length > 0) {
+          sender.replaceTrack(screenStream.getVideoTracks()[0]);
+        }
+        screenStream.getVideoTracks()[0].onended = () => {
+          if (sender && localStream.getVideoTracks().length > 0) {
+            sender.replaceTrack(localStream.getVideoTracks()[0]);
+          }
+          mainCall.classList.remove("screen-mode");
+        };
+        mainCall.classList.add("screen-mode");
+      } catch (e) {
+        console.error("Error al compartir pantalla:", e);
+      }
+    };
+	
+	
+	
+	const remoteIdInput = document.getElementById("remoteIdInput");
+const btnLlamar = document.getElementById("btnLlamar");
+
+btnLlamar.addEventListener("click", () => {
+  const remoteId = remoteIdInput.value.trim();
+  if (remoteId) {
+    startCall(remoteId);
+  } else {
+    alert("Por favor ingresa el ID remoto.");
+  }
+});
+
+	
+	
+	
+  </script>
+</body>
+</html>
