@@ -346,7 +346,6 @@
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
   <script>
-        // Variables de control general
     const chatButton = document.getElementById('chatToggle');
     const callChat = document.getElementById('callChat');
     const mainCall = document.getElementById('mainCall');
@@ -356,6 +355,10 @@
     const screenToggle = document.getElementById('screenToggle');
     const localVideo = document.getElementById("localVideo");
     const remoteVideo = document.getElementById("remoteVideo");
+    const remoteIdInput = document.getElementById("remoteIdInput");
+    const btnLlamar = document.getElementById("btnLlamar");
+    const startConnectionBtn = document.getElementById("startConnectionBtn");
+    const userIdInput = document.getElementById("userIdInput");
 
     let localStream = null;
     let remoteStream = null;
@@ -367,7 +370,7 @@
 
     function createPeerConnection() {
       const pc = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
       });
       remoteStream = new MediaStream();
       remoteVideo.srcObject = remoteStream;
@@ -391,10 +394,18 @@
 
     async function iniciarConexion(userId) {
       localUserId = userId;
-      connection = new signalR.HubConnectionBuilder()
-        .withUrl(`https://signalr2.onrender.com/chathub?userId=${userId}`)
-        .configureLogging(signalR.LogLevel.Information)
-        .build();
+      <!-- connection = new signalR.HubConnectionBuilder() -->
+        <!-- .withUrl(`https://signalr2.onrender.com/chathub?userId=${userId}`) -->
+        <!-- .configureLogging(signalR.LogLevel.Information) -->
+        <!-- .build(); -->
+		
+		connection = new signalR.HubConnectionBuilder()
+    .withUrl(`https://signalr2.onrender.com/chathub?userId=${userId}`, {
+        transport: signalR.HttpTransportType.WebSockets
+    })
+    .configureLogging(signalR.LogLevel.Information)
+    .build();
+
       connection.on("RecibirOferta", async (json, emisorId) => {
         const data = JSON.parse(json);
         remoteUserId = emisorId;
@@ -406,23 +417,21 @@
         }
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
         await pc.setRemoteDescription(new RTCSessionDescription(data));
-        if (pendingCandidates.length > 0) {
-          for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
-          pendingCandidates = [];
-        }
+        for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
+        pendingCandidates = [];
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         sendSignal("answer", answer);
       });
+
       connection.on("RecibirRespuesta", async (json) => {
         const data = JSON.parse(json);
         if (!pc) return;
         await pc.setRemoteDescription(new RTCSessionDescription(data));
-        if (pendingCandidates.length > 0) {
-          for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
-          pendingCandidates = [];
-        }
+        for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
+        pendingCandidates = [];
       });
+
       connection.on("RecibirIceCandidate", async (json) => {
         const data = JSON.parse(json);
         if (pc && pc.remoteDescription && pc.remoteDescription.type) {
@@ -431,6 +440,15 @@
           pendingCandidates.push(data);
         }
       });
+
+      connection.on("ModoPantallaRemoto", (activo) => {
+        if (activo) {
+          mainCall.classList.add("screen-mode");
+        } else {
+          mainCall.classList.remove("screen-mode");
+        }
+      });
+
       try {
         await connection.start();
         console.log("Conectado a SignalR");
@@ -479,9 +497,9 @@
       mainCall.classList.toggle('chat-open');
     });
 
-    document.querySelector('.toggle-camera').addEventListener('click', function(){
+    document.querySelector('.toggle-camera').addEventListener('click', function() {
       const icon = this.querySelector('i');
-      const on = this.getAttribute('data-active')==='true';
+      const on = this.getAttribute('data-active') === 'true';
       icon.className = on ? 'ph ph-camera-slash' : 'ph ph-camera';
       this.setAttribute('data-active', !on);
       if (!localStream) return;
@@ -489,9 +507,9 @@
       if (video) video.enabled = !video.enabled;
     });
 
-    document.querySelector('.toggle-mic').addEventListener('click', function(){
+    document.querySelector('.toggle-mic').addEventListener('click', function() {
       const icon = this.querySelector('i');
-      const on = this.getAttribute('data-active')==='true';
+      const on = this.getAttribute('data-active') === 'true';
       icon.className = on ? 'ph ph-microphone-slash' : 'ph ph-microphone';
       this.setAttribute('data-active', !on);
       if (!localStream) return;
@@ -503,23 +521,23 @@
       hangupCall();
     };
 
-    emojiToggle.addEventListener('click', e=>{
-      emojiPanel.style.display = emojiPanel.style.display==='flex'?'none':'flex';
+    emojiToggle.addEventListener('click', e => {
+      emojiPanel.style.display = emojiPanel.style.display === 'flex' ? 'none' : 'flex';
       e.stopPropagation();
     });
 
-    emojiPanel.querySelectorAll('span').forEach(s=>{
-      s.addEventListener('click', ()=>{
+    emojiPanel.querySelectorAll('span').forEach(s => {
+      s.addEventListener('click', () => {
         emojiFloat.textContent = s.textContent;
         emojiFloat.classList.add('show');
-        emojiPanel.style.display='none';
-        setTimeout(()=> emojiFloat.classList.remove('show'),1500);
+        emojiPanel.style.display = 'none';
+        setTimeout(() => emojiFloat.classList.remove('show'), 1500);
       });
     });
 
-    window.addEventListener('click', e=>{
-      if(!emojiPanel.contains(e.target)&&!emojiToggle.contains(e.target))
-        emojiPanel.style.display='none';
+    window.addEventListener('click', e => {
+      if (!emojiPanel.contains(e.target) && !emojiToggle.contains(e.target))
+        emojiPanel.style.display = 'none';
     });
 
     screenToggle.onclick = async () => {
@@ -532,10 +550,12 @@
         const sender = pc.getSenders().find(s => s.track && s.track.kind === "video");
         if (sender && screenStream.getVideoTracks().length > 0) {
           sender.replaceTrack(screenStream.getVideoTracks()[0]);
+          if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, true);
         }
         screenStream.getVideoTracks()[0].onended = () => {
           if (sender && localStream.getVideoTracks().length > 0) {
             sender.replaceTrack(localStream.getVideoTracks()[0]);
+            if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, false);
           }
           mainCall.classList.remove("screen-mode");
         };
@@ -544,63 +564,24 @@
         console.error("Error al compartir pantalla:", e);
       }
     };
-	
-	connection.on("ModoPantallaRemoto", (activo) => {
-    if (activo) {
-      mainCall.classList.add("screen-mode");
-    } else {
-      mainCall.classList.remove("screen-mode");
-    }
-  });
 
-  screenToggle.onclick = async () => {
-    if (!localStream || !pc) {
-      mainCall.classList.toggle("screen-mode");
-      return;
-    }
-    try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const sender = pc.getSenders().find(s => s.track && s.track.kind === "video");
-      if (sender && screenStream.getVideoTracks().length > 0) {
-        sender.replaceTrack(screenStream.getVideoTracks()[0]);
-        connection.invoke("CambiarModoPantalla", remoteUserId, true);
+    btnLlamar.addEventListener("click", () => {
+      const remoteId = remoteIdInput.value.trim();
+      if (remoteId) {
+        startCall(remoteId);
+      } else {
+        alert("Por favor ingresa el ID remoto.");
       }
-      screenStream.getVideoTracks()[0].onended = () => {
-        if (sender && localStream.getVideoTracks().length > 0) {
-          sender.replaceTrack(localStream.getVideoTracks()[0]);
-          connection.invoke("CambiarModoPantalla", remoteUserId, false);
-        }
-      };
-      mainCall.classList.add("screen-mode");
-    } catch (e) {
-      console.error("Error al compartir pantalla:", e);
-    }
-  };
-	
-	const remoteIdInput = document.getElementById("remoteIdInput");
-const btnLlamar = document.getElementById("btnLlamar");
+    });
 
-btnLlamar.addEventListener("click", () => {
-  const remoteId = remoteIdInput.value.trim();
-  if (remoteId) {
-    startCall(remoteId);
-  } else {
-    alert("Por favor ingresa el ID remoto.");
-  }
-});
-
-	const startConnectionBtn = document.getElementById("startConnectionBtn");
-const userIdInput = document.getElementById("userIdInput");
-
-startConnectionBtn.addEventListener("click", () => {
-  const userId = userIdInput.value.trim();
-  if (!userId) {
-    alert("Por favor ingresa tu ID antes de conectar.");
-    return;
-  }
-  iniciarConexion(userId);
-});
-	
+    startConnectionBtn.addEventListener("click", () => {
+      const userId = userIdInput.value.trim();
+      if (!userId) {
+        alert("Por favor ingresa tu ID antes de conectar.");
+        return;
+      }
+      iniciarConexion(userId);
+    });
 	
   </script>
 </body>
