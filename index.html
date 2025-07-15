@@ -394,17 +394,17 @@
 
     async function iniciarConexion(userId) {
       localUserId = userId;
-      <!-- connection = new signalR.HubConnectionBuilder() -->
-        <!-- .withUrl(`https://signalr2.onrender.com/chathub?userId=${userId}`) -->
-        <!-- .configureLogging(signalR.LogLevel.Information) -->
-        <!-- .build(); -->
+      connection = new signalR.HubConnectionBuilder()
+        .withUrl(`https://signalr2.onrender.com/chathub?userId=${userId}`)
+        .configureLogging(signalR.LogLevel.Information)
+        .build();
 		
-		connection = new signalR.HubConnectionBuilder()
-    .withUrl(`https://signalr2.onrender.com/chathub?userId=${userId}`, {
-        transport: signalR.HttpTransportType.WebSockets
-    })
-    .configureLogging(signalR.LogLevel.Information)
-    .build();
+		<!-- connection = new signalR.HubConnectionBuilder() -->
+    <!-- .withUrl(`https://signalr2.onrender.com/chathub?userId=${userId}`, { -->
+        <!-- transport: signalR.HttpTransportType.WebSockets -->
+    <!-- }) -->
+    <!-- .configureLogging(signalR.LogLevel.Information) -->
+    <!-- .build(); -->
 
       connection.on("RecibirOferta", async (json, emisorId) => {
         const data = JSON.parse(json);
@@ -541,6 +541,14 @@
     });
 
     screenToggle.onclick = async () => {
+	
+	
+	
+	
+	
+	
+	actualizarMiniaturasPanel();
+
       if (!localStream || !pc) {
         mainCall.classList.toggle("screen-mode");
         return;
@@ -564,6 +572,33 @@
         console.error("Error al compartir pantalla:", e);
       }
     };
+	
+	function actualizarMiniaturasPanel() {
+  const miniaturasPanel = document.getElementById("miniaturasPanel");
+  miniaturasPanel.innerHTML = ""; // Limpiar anteriores
+
+  const miniLocal = document.createElement("div");
+  miniLocal.className = "video-mini";
+  const videoLocal = document.createElement("video");
+  videoLocal.autoplay = true;
+  videoLocal.muted = true;
+  videoLocal.srcObject = localVideo.srcObject;
+  videoLocal.playsInline = true;
+  miniLocal.appendChild(videoLocal);
+
+  const miniRemote = document.createElement("div");
+  miniRemote.className = "video-mini";
+  const videoRemote = document.createElement("video");
+  videoRemote.autoplay = true;
+  videoRemote.srcObject = remoteVideo.srcObject;
+  videoRemote.playsInline = true;
+  miniRemote.appendChild(videoRemote);
+
+  miniaturasPanel.appendChild(miniLocal);
+  miniaturasPanel.appendChild(miniRemote);
+}
+
+	
 
     btnLlamar.addEventListener("click", () => {
       const remoteId = remoteIdInput.value.trim();
