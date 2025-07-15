@@ -656,16 +656,10 @@
       }
       // Oculta miniatura normal
       if (typeof miniaturaNormal !== 'undefined' && miniaturaNormal) miniaturaNormal.style.display = "none";
-      // Mostrar u ocultar panel de miniaturas según si eres emisor o receptor
+      // Mostrar panel de miniaturas para ambos
+      actualizarMiniaturasPanel();
       var miniaturasPanel = document.getElementById("miniaturasPanel");
-      if (screenStream && isScreenSharing) {
-        // Soy el que comparte: ocultar miniaturas
-        if (miniaturasPanel) miniaturasPanel.style.display = "none";
-      } else {
-        // Soy el receptor: mostrar miniaturas
-        actualizarMiniaturasPanel();
-        if (miniaturasPanel) miniaturasPanel.style.display = "flex";
-      }
+      if (miniaturasPanel) miniaturasPanel.style.display = "flex";
     }
 
     function actualizarMiniaturasPanel() {
