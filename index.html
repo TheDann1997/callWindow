@@ -545,7 +545,37 @@
       }
     };
 	
-	
+	connection.on("ModoPantallaRemoto", (activo) => {
+    if (activo) {
+      mainCall.classList.add("screen-mode");
+    } else {
+      mainCall.classList.remove("screen-mode");
+    }
+  });
+
+  screenToggle.onclick = async () => {
+    if (!localStream || !pc) {
+      mainCall.classList.toggle("screen-mode");
+      return;
+    }
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const sender = pc.getSenders().find(s => s.track && s.track.kind === "video");
+      if (sender && screenStream.getVideoTracks().length > 0) {
+        sender.replaceTrack(screenStream.getVideoTracks()[0]);
+        connection.invoke("CambiarModoPantalla", remoteUserId, true);
+      }
+      screenStream.getVideoTracks()[0].onended = () => {
+        if (sender && localStream.getVideoTracks().length > 0) {
+          sender.replaceTrack(localStream.getVideoTracks()[0]);
+          connection.invoke("CambiarModoPantalla", remoteUserId, false);
+        }
+      };
+      mainCall.classList.add("screen-mode");
+    } catch (e) {
+      console.error("Error al compartir pantalla:", e);
+    }
+  };
 	
 	const remoteIdInput = document.getElementById("remoteIdInput");
 const btnLlamar = document.getElementById("btnLlamar");
