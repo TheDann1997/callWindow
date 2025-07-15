@@ -667,7 +667,10 @@
       videoLocal.muted = true;
       videoLocal.playsInline = true;
       const localCameraTrack = getCameraTrack(localStream);
-      if (localCameraTrack) videoLocal.srcObject = new MediaStream([localCameraTrack]);
+      if (localCameraTrack) {
+        videoLocal.srcObject = new MediaStream([localCameraTrack]);
+        console.log('[Miniatura][Local] Mostrando cámara local');
+      }
       miniLocal.appendChild(videoLocal);
       const avatarLocal = document.createElement("div");
       avatarLocal.className = "avatar";
@@ -678,13 +681,24 @@
       nameLocal.textContent = "Tú";
       miniLocal.appendChild(nameLocal);
       miniaturasPanel.appendChild(miniLocal);
-      // Miniatura remota (cámara)
+      // Miniatura remota (cámara o primer video track)
       const miniRemote = document.createElement("div");
       miniRemote.className = "video-mini";
       const videoRemote = document.createElement("video");
       videoRemote.autoplay = true;
       videoRemote.playsInline = true;
-      const remoteCameraTrack = getCameraTrack(remoteStream);
+      let remoteCameraTrack = getCameraTrack(remoteStream);
+      if (!remoteCameraTrack) {
+        const videoTracks = remoteStream ? remoteStream.getVideoTracks() : [];
+        if (videoTracks.length > 0) {
+          remoteCameraTrack = videoTracks[0];
+          console.log('[Miniatura][Remota] Usando primer track de video como miniatura remota:', remoteCameraTrack.label);
+        } else {
+          console.log('[Miniatura][Remota] No hay track de video para mostrar en miniatura remota');
+        }
+      } else {
+        console.log('[Miniatura][Remota] Mostrando cámara remota');
+      }
       if (remoteCameraTrack) videoRemote.srcObject = new MediaStream([remoteCameraTrack]);
       miniRemote.appendChild(videoRemote);
       const avatarRemote = document.createElement("div");
