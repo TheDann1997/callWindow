@@ -374,6 +374,7 @@
     let localUserId = null;
     let remoteUserId = null;
     let pendingCandidates = [];
+    let screenSender = null; // Para poder remover el track de pantalla luego
 
     function createPeerConnection() {
       const pc = new RTCPeerConnection({
@@ -620,31 +621,30 @@
       if (screenShareDiv) screenShareDiv.style.display = "block";
       if (videoMainContainer) videoMainContainer.style.display = "none";
       if (typeof screenShareVideo !== 'undefined' && screenShareVideo) {
+        // Buscar el track de pantalla en local o remoto
+        let screenTrack = null;
         if (screenStream && isScreenSharing) {
           // Compartidor: muestra su propio screenStream
           const tracks = screenStream.getVideoTracks();
-          if (tracks.length > 0) {
-            screenShareVideo.srcObject = new MediaStream([tracks[0]]);
-            console.log('[ScreenShare] Mostrando mi propia pantalla en screen-share div');
-          } else {
-            screenShareVideo.srcObject = null;
-          }
+          if (tracks.length > 0) screenTrack = tracks[0];
         } else {
-          // Receptor: muestra el track de pantalla recibido
+          // Receptor: busca el track de pantalla en remoteStream
           const videoTracks = remoteStream ? remoteStream.getVideoTracks() : [];
-          console.log('[ScreenShare][Receptor] Tracks de remoteStream:', videoTracks.map(t => t.label));
-          let remoteScreenTrack = getScreenTrack(remoteStream);
-          if (!remoteScreenTrack && videoTracks.length === 1) {
-            // Fallback: si solo hay un track de video, úsalo
-            remoteScreenTrack = videoTracks[0];
-            console.log('[ScreenShare][Receptor] Usando único track de video como pantalla compartida');
+          screenTrack = videoTracks.find(t => t.label.toLowerCase().includes('screen') || t.label.toLowerCase().includes('window'));
+          if (!screenTrack && videoTracks.length > 1) {
+            // Fallback: si hay más de un track, el que no sea cámara
+            const camTrack = getCameraTrack(remoteStream);
+            screenTrack = videoTracks.find(t => t !== camTrack);
           }
-          if (remoteScreenTrack) {
-            screenShareVideo.srcObject = new MediaStream([remoteScreenTrack]);
-            console.log('[ScreenShare] Mostrando pantalla remota en screen-share div');
-          } else {
-            screenShareVideo.srcObject = null;
+          if (!screenTrack && videoTracks.length === 1) {
+            screenTrack = videoTracks[0];
           }
+        }
+        if (screenTrack) {
+          screenShareVideo.srcObject = new MediaStream([screenTrack]);
+          console.log('[ScreenShare] Mostrando pantalla compartida en screen-share div');
+        } else {
+          screenShareVideo.srcObject = null;
         }
       }
       // Oculta miniatura normal
@@ -666,11 +666,13 @@
       videoLocal.autoplay = true;
       videoLocal.muted = true;
       videoLocal.playsInline = true;
-      const localCameraTrack = getCameraTrack(localStream);
-      if (localCameraTrack) {
-        videoLocal.srcObject = new MediaStream([localCameraTrack]);
-        console.log('[Miniatura][Local] Mostrando cámara local');
+      let localCameraTrack = getCameraTrack(localStream);
+      if (!localCameraTrack && localStream) {
+        // Fallback: si solo hay un track de video
+        const videoTracks = localStream.getVideoTracks();
+        if (videoTracks.length > 0) localCameraTrack = videoTracks[0];
       }
+      if (localCameraTrack) videoLocal.srcObject = new MediaStream([localCameraTrack]);
       miniLocal.appendChild(videoLocal);
       const avatarLocal = document.createElement("div");
       avatarLocal.className = "avatar";
@@ -681,23 +683,19 @@
       nameLocal.textContent = "Tú";
       miniLocal.appendChild(nameLocal);
       miniaturasPanel.appendChild(miniLocal);
-      // Miniatura remota (cámara o primer video track)
+      // Miniatura remota (cámara)
       const miniRemote = document.createElement("div");
       miniRemote.className = "video-mini";
       const videoRemote = document.createElement("video");
       videoRemote.autoplay = true;
       videoRemote.playsInline = true;
       let remoteCameraTrack = getCameraTrack(remoteStream);
-      if (!remoteCameraTrack) {
-        const videoTracks = remoteStream ? remoteStream.getVideoTracks() : [];
-        if (videoTracks.length > 0) {
-          remoteCameraTrack = videoTracks[0];
-          console.log('[Miniatura][Remota] Usando primer track de video como miniatura remota:', remoteCameraTrack.label);
-        } else {
-          console.log('[Miniatura][Remota] No hay track de video para mostrar en miniatura remota');
-        }
-      } else {
-        console.log('[Miniatura][Remota] Mostrando cámara remota');
+      if (!remoteCameraTrack && remoteStream) {
+        // Fallback: si hay más de un track, el que no sea pantalla
+        const videoTracks = remoteStream.getVideoTracks();
+        const screenTrack = videoTracks.find(t => t.label.toLowerCase().includes('screen') || t.label.toLowerCase().includes('window'));
+        remoteCameraTrack = videoTracks.find(t => t !== screenTrack);
+        if (!remoteCameraTrack && videoTracks.length === 1) remoteCameraTrack = videoTracks[0];
       }
       if (remoteCameraTrack) videoRemote.srcObject = new MediaStream([remoteCameraTrack]);
       miniRemote.appendChild(videoRemote);
@@ -733,34 +731,33 @@
           screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
           console.log('[ScreenShare] screenStream obtenido:', screenStream);
           isScreenSharing = true;
-          const sender = pc.getSenders().find(s => s.track && s.track.kind === "video");
-          if (sender && screenStream.getVideoTracks().length > 0) {
-            sender.replaceTrack(screenStream.getVideoTracks()[0]);
-            if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, true);
-          }
-          // Forzar update del layout para mostrar pantalla compartida en grande
+          // Agregar el track de pantalla sin quitar el de cámara
+          const screenTrack = screenStream.getVideoTracks()[0];
+          screenSender = pc.addTrack(screenTrack, screenStream);
+          if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, true);
           updateLayout();
-          screenStream.getVideoTracks()[0].onended = () => {
+          screenTrack.onended = () => {
             // Al dejar de compartir
-            if (sender && localStream.getVideoTracks().length > 0) {
-              sender.replaceTrack(localStream.getVideoTracks()[0]);
-              if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, false);
+            if (screenSender) {
+              pc.removeTrack(screenSender);
+              screenSender = null;
             }
+            if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, false);
             isScreenSharing = false;
             screenStream = null;
             updateLayout();
           };
         } else {
           // Detener compartir pantalla manualmente
+          if (screenSender) {
+            pc.removeTrack(screenSender);
+            screenSender = null;
+          }
           if (screenStream) {
             screenStream.getTracks().forEach(track => track.stop());
             screenStream = null;
           }
-          const sender = pc.getSenders().find(s => s.track && s.track.kind === "video");
-          if (sender && localStream && localStream.getVideoTracks().length > 0) {
-            sender.replaceTrack(localStream.getVideoTracks()[0]);
-            if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, false);
-          }
+          if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, false);
           isScreenSharing = false;
           updateLayout();
         }
