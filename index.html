@@ -631,7 +631,14 @@
           }
         } else {
           // Receptor: muestra el track de pantalla recibido
-          const remoteScreenTrack = getScreenTrack(remoteStream);
+          const videoTracks = remoteStream ? remoteStream.getVideoTracks() : [];
+          console.log('[ScreenShare][Receptor] Tracks de remoteStream:', videoTracks.map(t => t.label));
+          let remoteScreenTrack = getScreenTrack(remoteStream);
+          if (!remoteScreenTrack && videoTracks.length === 1) {
+            // Fallback: si solo hay un track de video, úsalo
+            remoteScreenTrack = videoTracks[0];
+            console.log('[ScreenShare][Receptor] Usando único track de video como pantalla compartida');
+          }
           if (remoteScreenTrack) {
             screenShareVideo.srcObject = new MediaStream([remoteScreenTrack]);
             console.log('[ScreenShare] Mostrando pantalla remota en screen-share div');
