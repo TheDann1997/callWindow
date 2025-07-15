@@ -302,7 +302,9 @@
       </div>
 
       <div class="video-area">
-	  <div class="screen-share">Compartiendo pantalla</div>
+        <div class="screen-share" id="screenShareDiv" style="display:none;">
+          <video id="screenShareVideo" autoplay></video>
+        </div>
         <!-- Video principal grande (normal mode o pantalla compartida) -->
         <div class="video-main" id="videoMainContainer">
           <video id="mainVideo" autoplay></video>
@@ -361,6 +363,9 @@
     const btnLlamar = document.getElementById("btnLlamar");
     const startConnectionBtn = document.getElementById("startConnectionBtn");
     const userIdInput = document.getElementById("userIdInput");
+    const screenShareDiv = document.getElementById("screenShareDiv");
+    const screenShareVideo = document.getElementById("screenShareVideo");
+    const videoMainContainer = document.getElementById("videoMainContainer");
 
     let localStream = null;
     let remoteStream = null;
@@ -573,6 +578,9 @@
 
     function setLayoutNormal() {
       mainCall.classList.remove("screen-mode");
+      // Oculta pantalla compartida, muestra video principal
+      if (screenShareDiv) screenShareDiv.style.display = "none";
+      if (videoMainContainer) videoMainContainer.style.display = "block";
       // Video grande: el de la otra persona (cámara)
       if (typeof mainVideo !== 'undefined' && mainVideo && remoteStream) {
         const remoteCameraTrack = getCameraTrack(remoteStream);
@@ -604,31 +612,27 @@
 
     function setLayoutScreenShare() {
       mainCall.classList.add("screen-mode");
-      // Video grande: pantalla compartida
-      if (typeof mainVideo !== 'undefined' && mainVideo) {
-        // Si soy quien comparte, uso mi propio screenStream
+      // Mostrar pantalla compartida en el div especial, ocultar video principal
+      if (screenShareDiv) screenShareDiv.style.display = "block";
+      if (videoMainContainer) videoMainContainer.style.display = "none";
+      if (typeof screenShareVideo !== 'undefined' && screenShareVideo) {
         if (screenStream && isScreenSharing) {
-          // Mostrar el primer video track si existe
+          // Compartidor: muestra su propio screenStream
           const tracks = screenStream.getVideoTracks();
           if (tracks.length > 0) {
-            mainVideo.srcObject = new MediaStream([tracks[0]]);
-            console.log('[ScreenShare] Mostrando mi propia pantalla en grande');
+            screenShareVideo.srcObject = new MediaStream([tracks[0]]);
+            console.log('[ScreenShare] Mostrando mi propia pantalla en screen-share div');
           } else {
-            mainVideo.srcObject = null;
+            screenShareVideo.srcObject = null;
           }
-          if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "none";
-          if (typeof mainName !== 'undefined' && mainName) mainName.textContent = "Pantalla";
         } else {
-          // Si soy quien recibe, busco el track de pantalla en remoteStream
+          // Receptor: muestra el track de pantalla recibido
           const remoteScreenTrack = getScreenTrack(remoteStream);
           if (remoteScreenTrack) {
-            mainVideo.srcObject = new MediaStream([remoteScreenTrack]);
-            if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "none";
-            if (typeof mainName !== 'undefined' && mainName) mainName.textContent = "Pantalla";
+            screenShareVideo.srcObject = new MediaStream([remoteScreenTrack]);
+            console.log('[ScreenShare] Mostrando pantalla remota en screen-share div');
           } else {
-            mainVideo.srcObject = null;
-            if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "block";
-            if (typeof mainName !== 'undefined' && mainName) mainName.textContent = "Pantalla";
+            screenShareVideo.srcObject = null;
           }
         }
       }
