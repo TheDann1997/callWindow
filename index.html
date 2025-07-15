@@ -630,21 +630,28 @@
         } else {
           // Receptor: busca el track de pantalla en remoteStream
           const videoTracks = remoteStream ? remoteStream.getVideoTracks() : [];
+          console.log('[ScreenShare][Receptor] Tracks de remoteStream:', videoTracks.map(t => t.label));
+          // 1. Busca por label 'screen' o 'window'
           screenTrack = videoTracks.find(t => t.label.toLowerCase().includes('screen') || t.label.toLowerCase().includes('window'));
-          if (!screenTrack && videoTracks.length > 1) {
-            // Fallback: si hay más de un track, el que no sea cámara
+          // 2. Si hay dos tracks, el que no sea cámara
+          if (!screenTrack && videoTracks.length === 2) {
             const camTrack = getCameraTrack(remoteStream);
             screenTrack = videoTracks.find(t => t !== camTrack);
+            console.log('[ScreenShare][Receptor] Fallback: usando el track que no es cámara como pantalla', screenTrack?.label);
           }
+          // 3. Si solo hay uno, úsalo como fallback
           if (!screenTrack && videoTracks.length === 1) {
             screenTrack = videoTracks[0];
+            console.log('[ScreenShare][Receptor] Fallback: solo hay un track, usándolo como pantalla', screenTrack?.label);
           }
         }
         if (screenTrack) {
           screenShareVideo.srcObject = new MediaStream([screenTrack]);
-          console.log('[ScreenShare] Mostrando pantalla compartida en screen-share div');
+          screenShareVideo.muted = true;
+          console.log('[ScreenShare] Mostrando pantalla compartida en screen-share div:', screenTrack.label);
         } else {
           screenShareVideo.srcObject = null;
+          console.log('[ScreenShare] No se encontró track de pantalla para mostrar');
         }
       }
       // Oculta miniatura normal
@@ -689,15 +696,33 @@
       const videoRemote = document.createElement("video");
       videoRemote.autoplay = true;
       videoRemote.playsInline = true;
-      let remoteCameraTrack = getCameraTrack(remoteStream);
-      if (!remoteCameraTrack && remoteStream) {
-        // Fallback: si hay más de un track, el que no sea pantalla
-        const videoTracks = remoteStream.getVideoTracks();
+      let remoteCameraTrack = null;
+      const videoTracks = remoteStream ? remoteStream.getVideoTracks() : [];
+      console.log('[Miniatura][Remota] Tracks de remoteStream:', videoTracks.map(t => t.label));
+      // 1. Busca por label 'camera', 'face', o que no sea 'screen'/'window'
+      remoteCameraTrack = videoTracks.find(t => t.label.toLowerCase().includes('camera') || t.label.toLowerCase().includes('face'));
+      if (!remoteCameraTrack) {
+        remoteCameraTrack = videoTracks.find(t => !t.label.toLowerCase().includes('screen') && !t.label.toLowerCase().includes('window'));
+      }
+      // 2. Si hay dos tracks, el que no sea pantalla
+      if (!remoteCameraTrack && videoTracks.length === 2) {
         const screenTrack = videoTracks.find(t => t.label.toLowerCase().includes('screen') || t.label.toLowerCase().includes('window'));
         remoteCameraTrack = videoTracks.find(t => t !== screenTrack);
-        if (!remoteCameraTrack && videoTracks.length === 1) remoteCameraTrack = videoTracks[0];
+        console.log('[Miniatura][Remota] Fallback: usando el track que no es pantalla como cámara', remoteCameraTrack?.label);
       }
-      if (remoteCameraTrack) videoRemote.srcObject = new MediaStream([remoteCameraTrack]);
+      // 3. Si solo hay uno, úsalo como fallback
+      if (!remoteCameraTrack && videoTracks.length === 1) {
+        remoteCameraTrack = videoTracks[0];
+        console.log('[Miniatura][Remota] Fallback: solo hay un track, usándolo como cámara', remoteCameraTrack?.label);
+      }
+      if (remoteCameraTrack) {
+        videoRemote.srcObject = new MediaStream([remoteCameraTrack]);
+        videoRemote.muted = false;
+        console.log('[Miniatura][Remota] Mostrando cámara remota:', remoteCameraTrack.label);
+      } else {
+        videoRemote.srcObject = null;
+        console.log('[Miniatura][Remota] No se encontró track de cámara para mostrar');
+      }
       miniRemote.appendChild(videoRemote);
       const avatarRemote = document.createElement("div");
       avatarRemote.className = "avatar";
