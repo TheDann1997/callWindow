@@ -295,7 +295,11 @@
       </div>
 
       <div class="video-area">
-        <div class="screen-share">Compartiendo pantalla</div>
+	  
+	  
+        <div class="screen-share">   <video id="screenVideo" autoplay></video> </div>
+
+
         <!-- Video principal grande (normal mode) -->
         <div class="video-main">
           <video id="remoteVideo" autoplay></video>
@@ -367,6 +371,13 @@
     let localUserId = null;
     let remoteUserId = null;
     let pendingCandidates = [];
+
+
+const screenVideo = document.getElementById("screenVideo");
+screenVideo.srcObject = screenStream;
+screenVideo.play();
+
+
 
     function createPeerConnection() {
       const pc = new RTCPeerConnection({
@@ -541,7 +552,8 @@
     });
 
     screenToggle.onclick = async () => {
-	
+	const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+
 	
 	
 	
@@ -561,6 +573,7 @@
           if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, true);
         }
         screenStream.getVideoTracks()[0].onended = () => {
+		screenVideo.srcObject = null;
           if (sender && localStream.getVideoTracks().length > 0) {
             sender.replaceTrack(localStream.getVideoTracks()[0]);
             if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, false);
