@@ -560,12 +560,25 @@
     let screenStream = null;
     let isScreenSharing = false;
 
+    // Añadir helpers para distinguir tracks de cámara y pantalla
+    function getCameraTrack(stream) {
+      if (!stream) return null;
+      return stream.getTracks().find(t => t.kind === 'video' && t.label.toLowerCase().indexOf('screen') === -1);
+    }
+    function getScreenTrack(stream) {
+      if (!stream) return null;
+      return stream.getTracks().find(t => t.kind === 'video' && t.label.toLowerCase().indexOf('screen') !== -1);
+    }
+
     function setLayoutNormal() {
       mainCall.classList.remove("screen-mode");
-      // Video grande: el de la otra persona
+      // Video grande: el de la otra persona (cámara)
       if (typeof mainVideo !== 'undefined' && mainVideo && remoteStream) {
-        if (remoteStream.getTracks().length > 0) {
-          mainVideo.srcObject = remoteStream;
+        const remoteCameraTrack = getCameraTrack(remoteStream);
+        if (remoteCameraTrack) {
+          // Creamos un nuevo MediaStream solo con la cámara remota
+          const camStream = new MediaStream([remoteCameraTrack]);
+          mainVideo.srcObject = camStream;
           if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "none";
           if (typeof mainName !== 'undefined' && mainName) mainName.textContent = remoteUserId || "Remoto";
         } else {
@@ -577,7 +590,12 @@
       // Miniatura: tu propia cámara
       if (typeof miniaturaNormal !== 'undefined' && miniaturaNormal) miniaturaNormal.style.display = "flex";
       if (typeof miniLocalNormal !== 'undefined' && miniLocalNormal && localStream) {
-        miniLocalNormal.srcObject = localStream;
+        const localCameraTrack = getCameraTrack(localStream);
+        if (localCameraTrack) {
+          miniLocalNormal.srcObject = new MediaStream([localCameraTrack]);
+        } else {
+          miniLocalNormal.srcObject = null;
+        }
       }
       var miniaturasPanel = document.getElementById("miniaturasPanel");
       if (miniaturasPanel) miniaturasPanel.style.display = "none";
@@ -587,14 +605,23 @@
       mainCall.classList.add("screen-mode");
       // Video grande: pantalla compartida
       if (typeof mainVideo !== 'undefined' && mainVideo) {
-        if (screenStream) {
+        // Si soy quien comparte, uso mi propio screenStream
+        if (screenStream && isScreenSharing) {
           mainVideo.srcObject = screenStream;
           if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "none";
           if (typeof mainName !== 'undefined' && mainName) mainName.textContent = "Pantalla";
         } else {
-          mainVideo.srcObject = null;
-          if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "block";
-          if (typeof mainName !== 'undefined' && mainName) mainName.textContent = "Pantalla";
+          // Si soy quien recibe, busco el track de pantalla en remoteStream
+          const remoteScreenTrack = getScreenTrack(remoteStream);
+          if (remoteScreenTrack) {
+            mainVideo.srcObject = new MediaStream([remoteScreenTrack]);
+            if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "none";
+            if (typeof mainName !== 'undefined' && mainName) mainName.textContent = "Pantalla";
+          } else {
+            mainVideo.srcObject = null;
+            if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "block";
+            if (typeof mainName !== 'undefined' && mainName) mainName.textContent = "Pantalla";
+          }
         }
       }
       // Oculta miniatura normal
@@ -616,7 +643,8 @@
       videoLocal.autoplay = true;
       videoLocal.muted = true;
       videoLocal.playsInline = true;
-      if (localStream) videoLocal.srcObject = localStream;
+      const localCameraTrack = getCameraTrack(localStream);
+      if (localCameraTrack) videoLocal.srcObject = new MediaStream([localCameraTrack]);
       miniLocal.appendChild(videoLocal);
       const avatarLocal = document.createElement("div");
       avatarLocal.className = "avatar";
@@ -633,7 +661,8 @@
       const videoRemote = document.createElement("video");
       videoRemote.autoplay = true;
       videoRemote.playsInline = true;
-      if (remoteStream && remoteStream.getTracks().length > 0) videoRemote.srcObject = remoteStream;
+      const remoteCameraTrack = getCameraTrack(remoteStream);
+      if (remoteCameraTrack) videoRemote.srcObject = new MediaStream([remoteCameraTrack]);
       miniRemote.appendChild(videoRemote);
       const avatarRemote = document.createElement("div");
       avatarRemote.className = "avatar";
