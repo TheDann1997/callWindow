@@ -385,13 +385,17 @@
         if (event.candidate) sendSignal("candidate", event.candidate);
       };
       pc.ontrack = event => {
+        let added = false;
         event.streams[0].getTracks().forEach(track => {
           if (!remoteStream.getTracks().some(t => t.id === track.id)) {
             remoteStream.addTrack(track);
+            added = true;
           }
         });
-        // Actualizar el video principal y miniaturas si corresponde
-        updateLayout();
+        if (added) {
+          console.log('[ontrack] Nuevo track recibido, forzando updateLayout');
+          updateLayout();
+        }
       };
       pc.onconnectionstatechange = () => {
         if (["disconnected", "closed", "failed"].includes(pc.connectionState)) {
