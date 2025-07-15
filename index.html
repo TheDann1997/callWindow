@@ -302,18 +302,16 @@
       </div>
 
       <div class="video-area">
-        <div class="screen-share" id="screenShareDiv" style="display:none;">
-          <video id="screenShareVideo" autoplay></video>
+        <div class="screen-share">Compartiendo pantalla</div>
+        <!-- Video principal grande (normal mode) -->
+        <div class="video-main">
+          <video id="remoteVideo" autoplay></video>
+          <div class="avatar">DA</div>
+          <div class="mini-name">Daniel</div>
         </div>
-        <!-- Video principal grande (normal mode o pantalla compartida) -->
-        <div class="video-main" id="videoMainContainer">
-          <video id="mainVideo" autoplay></video>
-          <div class="avatar" id="mainAvatar">DA</div>
-          <div class="mini-name" id="mainName">Daniel</div>
-        </div>
-        <!-- Miniatura flotante abajo derecha (solo modo normal) -->
-        <div class="video-mini" id="miniaturaNormal">
-          <video id="miniLocalNormal" autoplay muted></video>
+        <!-- Miniatura flotante abajo derecha (normal mode) -->
+        <div class="video-mini">
+          <video id="localVideo" autoplay muted></video>
           <div class="avatar">YM</div>
           <div class="mini-name">Yolanda</div>
         </div>
@@ -321,7 +319,14 @@
 
       <!-- Miniaturas en screen-mode, CENTRADAS Y VERTICALES, NO SE MONTAN -->
       <div class="miniaturas-panel" id="miniaturasPanel">
-        <!-- Se llenará dinámicamente -->
+        <div class="video-mini">
+          <div class="avatar">DA</div>
+          <div class="mini-name">Daniel</div>
+        </div>
+        <div class="video-mini">
+          <div class="avatar">YM</div>
+          <div class="mini-name">Yolanda</div>
+        </div>
       </div>
 
       <div class="call-chat" id="callChat">
@@ -356,16 +361,12 @@
     const emojiPanel = document.getElementById('emojiPanel');
     const emojiFloat = document.getElementById('emojiFloat');
     const screenToggle = document.getElementById('screenToggle');
-    // Elimina referencias a remoteVideo y localVideo, usa mainVideo y miniLocalNormal
-    const mainVideo = document.getElementById("mainVideo");
-    const miniLocalNormal = document.getElementById("miniLocalNormal");
+    const localVideo = document.getElementById("localVideo");
+    const remoteVideo = document.getElementById("remoteVideo");
     const remoteIdInput = document.getElementById("remoteIdInput");
     const btnLlamar = document.getElementById("btnLlamar");
     const startConnectionBtn = document.getElementById("startConnectionBtn");
     const userIdInput = document.getElementById("userIdInput");
-    const screenShareDiv = document.getElementById("screenShareDiv");
-    const screenShareVideo = document.getElementById("screenShareVideo");
-    const videoMainContainer = document.getElementById("videoMainContainer");
 
     let localStream = null;
     let remoteStream = null;
@@ -374,29 +375,22 @@
     let localUserId = null;
     let remoteUserId = null;
     let pendingCandidates = [];
-    let screenSender = null; // Para poder remover el track de pantalla luego
 
     function createPeerConnection() {
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
       });
       remoteStream = new MediaStream();
-      // No asignar a remoteVideo.srcObject, sino actualizar el stream en el layout cuando sea necesario
+      remoteVideo.srcObject = remoteStream;
       pc.onicecandidate = event => {
         if (event.candidate) sendSignal("candidate", event.candidate);
       };
       pc.ontrack = event => {
-        let added = false;
         event.streams[0].getTracks().forEach(track => {
           if (!remoteStream.getTracks().some(t => t.id === track.id)) {
             remoteStream.addTrack(track);
-            added = true;
           }
         });
-        if (added) {
-          console.log('[ontrack] Nuevo track recibido, forzando updateLayout');
-          updateLayout();
-        }
       };
       pc.onconnectionstatechange = () => {
         if (["disconnected", "closed", "failed"].includes(pc.connectionState)) {
@@ -421,15 +415,13 @@
     <!-- .build(); -->
 
       connection.on("RecibirOferta", async (json, emisorId) => {
-        console.log("[SignalR] Recibida oferta de:", emisorId, json);
         const data = JSON.parse(json);
         remoteUserId = emisorId;
         if (pc) hangupCall(false);
         pc = createPeerConnection();
         if (!localStream) {
-          console.log("[startCall] Solicitando acceso a cámara/micrófono...");
           localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-          if (miniLocalNormal) miniLocalNormal.srcObject = localStream;
+          localVideo.srcObject = localStream;
         }
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
         await pc.setRemoteDescription(new RTCSessionDescription(data));
@@ -441,7 +433,6 @@
       });
 
       connection.on("RecibirRespuesta", async (json) => {
-        console.log("[SignalR] Recibida respuesta:", json);
         const data = JSON.parse(json);
         if (!pc) return;
         await pc.setRemoteDescription(new RTCSessionDescription(data));
@@ -450,7 +441,6 @@
       });
 
       connection.on("RecibirIceCandidate", async (json) => {
-        console.log("[SignalR] Recibido candidato ICE:", json);
         const data = JSON.parse(json);
         if (pc && pc.remoteDescription && pc.remoteDescription.type) {
           await pc.addIceCandidate(new RTCIceCandidate(data));
@@ -476,12 +466,8 @@
     }
 
     function sendSignal(type, data) {
-      if (!remoteUserId || !connection) {
-        console.warn("[sendSignal] No hay remoteUserId o conexión");
-        return;
-      }
+      if (!remoteUserId || !connection) return;
       const payload = JSON.stringify(data);
-      console.log(`[sendSignal] Enviando señal: ${type} a ${remoteUserId}`, data);
       switch (type) {
         case "offer": connection.invoke("EnviarOferta", remoteUserId, payload); break;
         case "answer": connection.invoke("EnviarRespuesta", remoteUserId, payload); break;
@@ -490,34 +476,28 @@
     }
 
     async function startCall(remoteId) {
-      console.log("[startCall] Iniciando llamada a:", remoteId);
       if (!connection || connection.state !== "Connected") {
-        console.warn("[startCall] No hay conexión activa a SignalR");
         alert("Primero debes iniciar la conexión"); return;
       }
       remoteUserId = remoteId;
       if (pc) hangupCall(false);
       pc = createPeerConnection();
       if (!localStream) {
-        console.log("[startCall] Solicitando acceso a cámara/micrófono...");
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        if (miniLocalNormal) miniLocalNormal.srcObject = localStream;
+        localVideo.srcObject = localStream;
       }
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      console.log("[startCall] Oferta creada y localDescription seteada. Enviando señal...");
       sendSignal("offer", offer);
-      updateLayout();
     }
 
     function hangupCall() {
       if (pc) { pc.close(); pc = null; }
       if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
       if (remoteStream) { remoteStream.getTracks().forEach(track => track.stop()); remoteStream = null; }
-      if (miniLocalNormal) miniLocalNormal.srcObject = null;
-      if (mainVideo) mainVideo.srcObject = null;
-      afterCallUpdateLayout();
+      localVideo.srcObject = null;
+      remoteVideo.srcObject = null;
     }
 
     chatButton.addEventListener('click', () => {
@@ -568,297 +548,68 @@
         emojiPanel.style.display = 'none';
     });
 
-    let screenStream = null;
-    let isScreenSharing = false;
-
-    // Añadir helpers para distinguir tracks de cámara y pantalla
-    function getCameraTrack(stream) {
-      if (!stream) return null;
-      return stream.getTracks().find(t => t.kind === 'video' && t.label.toLowerCase().indexOf('screen') === -1);
-    }
-    function getScreenTrack(stream) {
-      if (!stream) return null;
-      return stream.getTracks().find(t => t.kind === 'video' && t.label.toLowerCase().indexOf('screen') !== -1);
-    }
-
-    function setLayoutNormal() {
-      mainCall.classList.remove("screen-mode");
-      // Oculta pantalla compartida, muestra video principal
-      if (screenShareDiv) screenShareDiv.style.display = "none";
-      if (videoMainContainer) videoMainContainer.style.display = "block";
-      // Video grande: el de la otra persona (cámara)
-      if (typeof mainVideo !== 'undefined' && mainVideo && remoteStream) {
-        const remoteCameraTrack = getCameraTrack(remoteStream);
-        if (remoteCameraTrack) {
-          // Creamos un nuevo MediaStream solo con la cámara remota
-          const camStream = new MediaStream([remoteCameraTrack]);
-          mainVideo.srcObject = camStream;
-          if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "none";
-          if (typeof mainName !== 'undefined' && mainName) mainName.textContent = remoteUserId || "Remoto";
-        } else {
-          mainVideo.srcObject = null;
-          if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "block";
-          if (typeof mainName !== 'undefined' && mainName) mainName.textContent = remoteUserId || "Remoto";
-        }
-      }
-      // Miniatura: tu propia cámara
-      if (typeof miniaturaNormal !== 'undefined' && miniaturaNormal) miniaturaNormal.style.display = "flex";
-      if (typeof miniLocalNormal !== 'undefined' && miniLocalNormal && localStream) {
-        const localCameraTrack = getCameraTrack(localStream);
-        if (localCameraTrack) {
-          miniLocalNormal.srcObject = new MediaStream([localCameraTrack]);
-        } else {
-          miniLocalNormal.srcObject = null;
-        }
-      }
-      var miniaturasPanel = document.getElementById("miniaturasPanel");
-      if (miniaturasPanel) miniaturasPanel.style.display = "none";
-    }
-
-    function setLayoutScreenShare() {
-      mainCall.classList.add("screen-mode");
-      // Mostrar pantalla compartida en el div especial, ocultar video principal
-      if (screenShareDiv) screenShareDiv.style.display = "block";
-      if (videoMainContainer) videoMainContainer.style.display = "none";
-      if (typeof screenShareVideo !== 'undefined' && screenShareVideo) {
-        // Buscar el track de pantalla en local o remoto
-        let screenTrack = null;
-        if (screenStream && isScreenSharing) {
-          // Compartidor: muestra su propio screenStream
-          const tracks = screenStream.getVideoTracks();
-          if (tracks.length > 0) screenTrack = tracks[0];
-        } else {
-          // Receptor: busca el track de pantalla en remoteStream
-          const videoTracks = remoteStream ? remoteStream.getVideoTracks() : [];
-          console.log('[ScreenShare][Receptor] Tracks de remoteStream:', videoTracks.map(t => t.label));
-          // 1. Busca por label 'screen' o 'window'
-          screenTrack = videoTracks.find(t => t.label.toLowerCase().includes('screen') || t.label.toLowerCase().includes('window'));
-          // 2. Si hay dos tracks, el que no sea cámara
-          if (!screenTrack && videoTracks.length === 2) {
-            const camTrack = getCameraTrack(remoteStream);
-            screenTrack = videoTracks.find(t => t !== camTrack);
-            console.log('[ScreenShare][Receptor] Fallback: usando el track que no es cámara como pantalla', screenTrack?.label);
-          }
-          // 3. Si solo hay uno, úsalo como fallback
-          if (!screenTrack && videoTracks.length === 1) {
-            screenTrack = videoTracks[0];
-            console.log('[ScreenShare][Receptor] Fallback: solo hay un track, usándolo como pantalla', screenTrack?.label);
-          }
-        }
-        if (screenTrack) {
-          screenShareVideo.srcObject = new MediaStream([screenTrack]);
-          screenShareVideo.muted = true;
-          console.log('[ScreenShare] Mostrando pantalla compartida en screen-share div:', screenTrack.label);
-        } else {
-          screenShareVideo.srcObject = null;
-          console.log('[ScreenShare] No se encontró track de pantalla para mostrar');
-        }
-      }
-      // Oculta miniatura normal
-      if (typeof miniaturaNormal !== 'undefined' && miniaturaNormal) miniaturaNormal.style.display = "none";
-      // Mostrar panel de miniaturas para ambos
-      actualizarMiniaturasPanel();
-      var miniaturasPanel = document.getElementById("miniaturasPanel");
-      if (miniaturasPanel) miniaturasPanel.style.display = "flex";
-    }
-
-    function actualizarMiniaturasPanel() {
-      const miniaturasPanel = document.getElementById("miniaturasPanel");
-      if (!miniaturasPanel) return;
-      miniaturasPanel.innerHTML = "";
-      // Miniatura local (cámara)
-      const miniLocal = document.createElement("div");
-      miniLocal.className = "video-mini";
-      const videoLocal = document.createElement("video");
-      videoLocal.autoplay = true;
-      videoLocal.muted = true;
-      videoLocal.playsInline = true;
-      let localCameraTrack = getCameraTrack(localStream);
-      if (!localCameraTrack && localStream) {
-        // Fallback: si solo hay un track de video
-        const videoTracks = localStream.getVideoTracks();
-        if (videoTracks.length > 0) localCameraTrack = videoTracks[0];
-      }
-      if (localCameraTrack) videoLocal.srcObject = new MediaStream([localCameraTrack]);
-      miniLocal.appendChild(videoLocal);
-      const avatarLocal = document.createElement("div");
-      avatarLocal.className = "avatar";
-      avatarLocal.textContent = userIdInput && userIdInput.value ? userIdInput.value.substring(0,2).toUpperCase() : "YO";
-      miniLocal.appendChild(avatarLocal);
-      const nameLocal = document.createElement("div");
-      nameLocal.className = "mini-name";
-      nameLocal.textContent = "Tú";
-      miniLocal.appendChild(nameLocal);
-      miniaturasPanel.appendChild(miniLocal);
-      // Miniatura remota (cámara)
-      const miniRemote = document.createElement("div");
-      miniRemote.className = "video-mini";
-      const videoRemote = document.createElement("video");
-      videoRemote.autoplay = true;
-      videoRemote.playsInline = true;
-      let remoteCameraTrack = null;
-      const videoTracks = remoteStream ? remoteStream.getVideoTracks() : [];
-      console.log('[Miniatura][Remota] Tracks de remoteStream:', videoTracks.map(t => t.label));
-      // 1. Busca por label 'camera', 'face', o que no sea 'screen'/'window'
-      remoteCameraTrack = videoTracks.find(t => t.label.toLowerCase().includes('camera') || t.label.toLowerCase().includes('face'));
-      if (!remoteCameraTrack) {
-        remoteCameraTrack = videoTracks.find(t => !t.label.toLowerCase().includes('screen') && !t.label.toLowerCase().includes('window'));
-      }
-      // 2. Si hay dos tracks, el que no sea pantalla
-      if (!remoteCameraTrack && videoTracks.length === 2) {
-        const screenTrack = videoTracks.find(t => t.label.toLowerCase().includes('screen') || t.label.toLowerCase().includes('window'));
-        remoteCameraTrack = videoTracks.find(t => t !== screenTrack);
-        console.log('[Miniatura][Remota] Fallback: usando el track que no es pantalla como cámara', remoteCameraTrack?.label);
-      }
-      // 3. Si solo hay uno, úsalo como fallback
-      if (!remoteCameraTrack && videoTracks.length === 1) {
-        remoteCameraTrack = videoTracks[0];
-        console.log('[Miniatura][Remota] Fallback: solo hay un track, usándolo como cámara', remoteCameraTrack?.label);
-      }
-      if (remoteCameraTrack) {
-        videoRemote.srcObject = new MediaStream([remoteCameraTrack]);
-        videoRemote.muted = false;
-        console.log('[Miniatura][Remota] Mostrando cámara remota:', remoteCameraTrack.label);
-      } else {
-        videoRemote.srcObject = null;
-        console.log('[Miniatura][Remota] No se encontró track de cámara para mostrar');
-      }
-      miniRemote.appendChild(videoRemote);
-      const avatarRemote = document.createElement("div");
-      avatarRemote.className = "avatar";
-      avatarRemote.textContent = remoteUserId ? remoteUserId.substring(0,2).toUpperCase() : "R";
-      miniRemote.appendChild(avatarRemote);
-      const nameRemote = document.createElement("div");
-      nameRemote.className = "mini-name";
-      nameRemote.textContent = remoteUserId || "Remoto";
-      miniRemote.appendChild(nameRemote);
-      miniaturasPanel.appendChild(miniRemote);
-    }
-
-    // Cambia el layout según el modo
-    function updateLayout() {
-      if (isScreenSharing) {
-        setLayoutScreenShare();
-      } else {
-        setLayoutNormal();
-      }
-    }
-
     screenToggle.onclick = async () => {
+	
+	
+	
+	
+	
+	
+	actualizarMiniaturasPanel();
+
       if (!localStream || !pc) {
-        isScreenSharing = false;
-        updateLayout();
+        mainCall.classList.toggle("screen-mode");
         return;
       }
       try {
-        if (!isScreenSharing) {
-          // Iniciar compartir pantalla
-          screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-          console.log('[ScreenShare] screenStream obtenido:', screenStream);
-          isScreenSharing = true;
-          // Agregar el track de pantalla sin quitar el de cámara
-          const screenTrack = screenStream.getVideoTracks()[0];
-          screenSender = pc.addTrack(screenTrack, screenStream);
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const sender = pc.getSenders().find(s => s.track && s.track.kind === "video");
+        if (sender && screenStream.getVideoTracks().length > 0) {
+          sender.replaceTrack(screenStream.getVideoTracks()[0]);
           if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, true);
-          updateLayout();
-          screenTrack.onended = () => {
-            // Al dejar de compartir
-            if (screenSender) {
-              pc.removeTrack(screenSender);
-              screenSender = null;
-            }
-            if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, false);
-            isScreenSharing = false;
-            screenStream = null;
-            updateLayout();
-          };
-        } else {
-          // Detener compartir pantalla manualmente
-          if (screenSender) {
-            pc.removeTrack(screenSender);
-            screenSender = null;
-          }
-          if (screenStream) {
-            screenStream.getTracks().forEach(track => track.stop());
-            screenStream = null;
-          }
-          if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, false);
-          isScreenSharing = false;
-          updateLayout();
         }
+        screenStream.getVideoTracks()[0].onended = () => {
+          if (sender && localStream.getVideoTracks().length > 0) {
+            sender.replaceTrack(localStream.getVideoTracks()[0]);
+            if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, false);
+          }
+          mainCall.classList.remove("screen-mode");
+        };
+        mainCall.classList.add("screen-mode");
       } catch (e) {
         console.error("Error al compartir pantalla:", e);
       }
     };
+	
+	function actualizarMiniaturasPanel() {
+  const miniaturasPanel = document.getElementById("miniaturasPanel");
+  miniaturasPanel.innerHTML = ""; // Limpiar anteriores
 
-    // Escuchar cambios de modo de pantalla desde el remoto
-    connection?.on && connection.on("ModoPantallaRemoto", (activo) => {
-      isScreenSharing = activo;
-      updateLayout();
-    });
+  const miniLocal = document.createElement("div");
+  miniLocal.className = "video-mini";
+  const videoLocal = document.createElement("video");
+  videoLocal.autoplay = true;
+  videoLocal.muted = true;
+  videoLocal.srcObject = localVideo.srcObject;
+  videoLocal.playsInline = true;
+  miniLocal.appendChild(videoLocal);
 
-    // Al iniciar o terminar llamada, actualizar layout
-    function afterCallUpdateLayout() {
-      isScreenSharing = false;
-      screenStream = null;
-      updateLayout();
-    }
+  const miniRemote = document.createElement("div");
+  miniRemote.className = "video-mini";
+  const videoRemote = document.createElement("video");
+  videoRemote.autoplay = true;
+  videoRemote.srcObject = remoteVideo.srcObject;
+  videoRemote.playsInline = true;
+  miniRemote.appendChild(videoRemote);
 
-    // Llamar afterCallUpdateLayout en los lugares correctos
-    function hangupCall() {
-      if (pc) { pc.close(); pc = null; }
-      if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
-      if (remoteStream) { remoteStream.getTracks().forEach(track => track.stop()); remoteStream = null; }
-      if (miniLocalNormal) miniLocalNormal.srcObject = null;
-      if (mainVideo) mainVideo.srcObject = null;
-      afterCallUpdateLayout();
-    }
+  miniaturasPanel.appendChild(miniLocal);
+  miniaturasPanel.appendChild(miniRemote);
+}
 
-    // Al recibir nueva llamada o respuesta, actualizar layout
-    connection?.on && connection.on("RecibirOferta", async (json, emisorId) => {
-      console.log("[SignalR] Recibida oferta de:", emisorId, json);
-      const data = JSON.parse(json);
-      remoteUserId = emisorId;
-      if (pc) hangupCall(false);
-      pc = createPeerConnection();
-      if (!localStream) {
-        console.log("[startCall] Solicitando acceso a cámara/micrófono...");
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        if (miniLocalNormal) miniLocalNormal.srcObject = localStream;
-      }
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-      await pc.setRemoteDescription(new RTCSessionDescription(data));
-      for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
-      pendingCandidates = [];
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      sendSignal("answer", answer);
-      updateLayout();
-    });
-    connection?.on && connection.on("RecibirRespuesta", async (json) => {
-      console.log("[SignalR] Recibida respuesta:", json);
-      const data = JSON.parse(json);
-      if (!pc) return;
-      await pc.setRemoteDescription(new RTCSessionDescription(data));
-      for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
-      pendingCandidates = [];
-      afterCallUpdateLayout();
-    });
-
-    // Al iniciar conexión, actualizar layout
-    startConnectionBtn.addEventListener("click", () => {
-      const userId = userIdInput.value.trim();
-      if (!userId) {
-        alert("Por favor ingresa tu ID antes de conectar.");
-        return;
-      }
-      iniciarConexion(userId);
-      afterCallUpdateLayout();
-    });
+	
 
     btnLlamar.addEventListener("click", () => {
       const remoteId = remoteIdInput.value.trim();
-      console.log("[UI] Botón Llamar presionado. remoteId:", remoteId);
       if (remoteId) {
         startCall(remoteId);
       } else {
@@ -866,8 +617,15 @@
       }
     });
 
-    // Inicializar layout al cargar
-    updateLayout();
+    startConnectionBtn.addEventListener("click", () => {
+      const userId = userIdInput.value.trim();
+      if (!userId) {
+        alert("Por favor ingresa tu ID antes de conectar.");
+        return;
+      }
+      iniciarConexion(userId);
+    });
+	
   </script>
 </body>
 </html>
