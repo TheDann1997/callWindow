@@ -607,7 +607,14 @@
       if (typeof mainVideo !== 'undefined' && mainVideo) {
         // Si soy quien comparte, uso mi propio screenStream
         if (screenStream && isScreenSharing) {
-          mainVideo.srcObject = screenStream;
+          // Mostrar el primer video track si existe
+          const tracks = screenStream.getVideoTracks();
+          if (tracks.length > 0) {
+            mainVideo.srcObject = new MediaStream([tracks[0]]);
+            console.log('[ScreenShare] Mostrando mi propia pantalla en grande');
+          } else {
+            mainVideo.srcObject = null;
+          }
           if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "none";
           if (typeof mainName !== 'undefined' && mainName) mainName.textContent = "Pantalla";
         } else {
@@ -694,12 +701,15 @@
         if (!isScreenSharing) {
           // Iniciar compartir pantalla
           screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+          console.log('[ScreenShare] screenStream obtenido:', screenStream);
           isScreenSharing = true;
           const sender = pc.getSenders().find(s => s.track && s.track.kind === "video");
           if (sender && screenStream.getVideoTracks().length > 0) {
             sender.replaceTrack(screenStream.getVideoTracks()[0]);
             if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, true);
           }
+          // Forzar update del layout para mostrar pantalla compartida en grande
+          updateLayout();
           screenStream.getVideoTracks()[0].onended = () => {
             // Al dejar de compartir
             if (sender && localStream.getVideoTracks().length > 0) {
@@ -722,8 +732,8 @@
             if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, false);
           }
           isScreenSharing = false;
+          updateLayout();
         }
-        updateLayout();
       } catch (e) {
         console.error("Error al compartir pantalla:", e);
       }
