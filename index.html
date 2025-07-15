@@ -353,8 +353,9 @@
     const emojiPanel = document.getElementById('emojiPanel');
     const emojiFloat = document.getElementById('emojiFloat');
     const screenToggle = document.getElementById('screenToggle');
-    const localVideo = document.getElementById("localVideo");
-    const remoteVideo = document.getElementById("remoteVideo");
+    // Elimina referencias a remoteVideo y localVideo, usa mainVideo y miniLocalNormal
+    const mainVideo = document.getElementById("mainVideo");
+    const miniLocalNormal = document.getElementById("miniLocalNormal");
     const remoteIdInput = document.getElementById("remoteIdInput");
     const btnLlamar = document.getElementById("btnLlamar");
     const startConnectionBtn = document.getElementById("startConnectionBtn");
@@ -373,7 +374,7 @@
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
       });
       remoteStream = new MediaStream();
-      remoteVideo.srcObject = remoteStream;
+      // No asignar a remoteVideo.srcObject, sino actualizar el stream en el layout cuando sea necesario
       pc.onicecandidate = event => {
         if (event.candidate) sendSignal("candidate", event.candidate);
       };
@@ -383,6 +384,8 @@
             remoteStream.addTrack(track);
           }
         });
+        // Actualizar el video principal y miniaturas si corresponde
+        updateLayout();
       };
       pc.onconnectionstatechange = () => {
         if (["disconnected", "closed", "failed"].includes(pc.connectionState)) {
@@ -407,13 +410,15 @@
     <!-- .build(); -->
 
       connection.on("RecibirOferta", async (json, emisorId) => {
+        console.log("[SignalR] Recibida oferta de:", emisorId, json);
         const data = JSON.parse(json);
         remoteUserId = emisorId;
         if (pc) hangupCall(false);
         pc = createPeerConnection();
         if (!localStream) {
+          console.log("[startCall] Solicitando acceso a cámara/micrófono...");
           localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-          localVideo.srcObject = localStream;
+          if (miniLocalNormal) miniLocalNormal.srcObject = localStream;
         }
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
         await pc.setRemoteDescription(new RTCSessionDescription(data));
@@ -425,6 +430,7 @@
       });
 
       connection.on("RecibirRespuesta", async (json) => {
+        console.log("[SignalR] Recibida respuesta:", json);
         const data = JSON.parse(json);
         if (!pc) return;
         await pc.setRemoteDescription(new RTCSessionDescription(data));
@@ -433,6 +439,7 @@
       });
 
       connection.on("RecibirIceCandidate", async (json) => {
+        console.log("[SignalR] Recibido candidato ICE:", json);
         const data = JSON.parse(json);
         if (pc && pc.remoteDescription && pc.remoteDescription.type) {
           await pc.addIceCandidate(new RTCIceCandidate(data));
@@ -458,8 +465,12 @@
     }
 
     function sendSignal(type, data) {
-      if (!remoteUserId || !connection) return;
+      if (!remoteUserId || !connection) {
+        console.warn("[sendSignal] No hay remoteUserId o conexión");
+        return;
+      }
       const payload = JSON.stringify(data);
+      console.log(`[sendSignal] Enviando señal: ${type} a ${remoteUserId}`, data);
       switch (type) {
         case "offer": connection.invoke("EnviarOferta", remoteUserId, payload); break;
         case "answer": connection.invoke("EnviarRespuesta", remoteUserId, payload); break;
@@ -468,28 +479,34 @@
     }
 
     async function startCall(remoteId) {
+      console.log("[startCall] Iniciando llamada a:", remoteId);
       if (!connection || connection.state !== "Connected") {
+        console.warn("[startCall] No hay conexión activa a SignalR");
         alert("Primero debes iniciar la conexión"); return;
       }
       remoteUserId = remoteId;
       if (pc) hangupCall(false);
       pc = createPeerConnection();
       if (!localStream) {
+        console.log("[startCall] Solicitando acceso a cámara/micrófono...");
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        localVideo.srcObject = localStream;
+        if (miniLocalNormal) miniLocalNormal.srcObject = localStream;
       }
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      console.log("[startCall] Oferta creada y localDescription seteada. Enviando señal...");
       sendSignal("offer", offer);
+      updateLayout();
     }
 
     function hangupCall() {
       if (pc) { pc.close(); pc = null; }
       if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
       if (remoteStream) { remoteStream.getTracks().forEach(track => track.stop()); remoteStream = null; }
-      localVideo.srcObject = null;
-      remoteVideo.srcObject = null;
+      if (miniLocalNormal) miniLocalNormal.srcObject = null;
+      if (mainVideo) mainVideo.srcObject = null;
+      afterCallUpdateLayout();
     }
 
     chatButton.addEventListener('click', () => {
@@ -546,9 +563,9 @@
     function setLayoutNormal() {
       mainCall.classList.remove("screen-mode");
       // Video grande: el de la otra persona
-      if (typeof mainVideo !== 'undefined' && mainVideo && typeof remoteVideo !== 'undefined' && remoteVideo) {
-        if (remoteVideo.srcObject) {
-          mainVideo.srcObject = remoteVideo.srcObject;
+      if (typeof mainVideo !== 'undefined' && mainVideo && remoteStream) {
+        if (remoteStream.getTracks().length > 0) {
+          mainVideo.srcObject = remoteStream;
           if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "none";
           if (typeof mainName !== 'undefined' && mainName) mainName.textContent = remoteUserId || "Remoto";
         } else {
@@ -559,12 +576,8 @@
       }
       // Miniatura: tu propia cámara
       if (typeof miniaturaNormal !== 'undefined' && miniaturaNormal) miniaturaNormal.style.display = "flex";
-      if (typeof miniLocalNormal !== 'undefined' && miniLocalNormal && typeof localVideo !== 'undefined' && localVideo) {
-        if (localVideo.srcObject) {
-          miniLocalNormal.srcObject = localVideo.srcObject;
-        } else {
-          miniLocalNormal.srcObject = null;
-        }
+      if (typeof miniLocalNormal !== 'undefined' && miniLocalNormal && localStream) {
+        miniLocalNormal.srcObject = localStream;
       }
       var miniaturasPanel = document.getElementById("miniaturasPanel");
       if (miniaturasPanel) miniaturasPanel.style.display = "none";
@@ -603,7 +616,7 @@
       videoLocal.autoplay = true;
       videoLocal.muted = true;
       videoLocal.playsInline = true;
-      if (typeof localVideo !== 'undefined' && localVideo) videoLocal.srcObject = localVideo.srcObject;
+      if (localStream) videoLocal.srcObject = localStream;
       miniLocal.appendChild(videoLocal);
       const avatarLocal = document.createElement("div");
       avatarLocal.className = "avatar";
@@ -620,7 +633,7 @@
       const videoRemote = document.createElement("video");
       videoRemote.autoplay = true;
       videoRemote.playsInline = true;
-      if (typeof remoteVideo !== 'undefined' && remoteVideo) videoRemote.srcObject = remoteVideo.srcObject;
+      if (remoteStream && remoteStream.getTracks().length > 0) videoRemote.srcObject = remoteStream;
       miniRemote.appendChild(videoRemote);
       const avatarRemote = document.createElement("div");
       avatarRemote.className = "avatar";
@@ -705,20 +718,22 @@
       if (pc) { pc.close(); pc = null; }
       if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
       if (remoteStream) { remoteStream.getTracks().forEach(track => track.stop()); remoteStream = null; }
-      localVideo.srcObject = null;
-      remoteVideo.srcObject = null;
+      if (miniLocalNormal) miniLocalNormal.srcObject = null;
+      if (mainVideo) mainVideo.srcObject = null;
       afterCallUpdateLayout();
     }
 
     // Al recibir nueva llamada o respuesta, actualizar layout
     connection?.on && connection.on("RecibirOferta", async (json, emisorId) => {
+      console.log("[SignalR] Recibida oferta de:", emisorId, json);
       const data = JSON.parse(json);
       remoteUserId = emisorId;
       if (pc) hangupCall(false);
       pc = createPeerConnection();
       if (!localStream) {
+        console.log("[startCall] Solicitando acceso a cámara/micrófono...");
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        localVideo.srcObject = localStream;
+        if (miniLocalNormal) miniLocalNormal.srcObject = localStream;
       }
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
       await pc.setRemoteDescription(new RTCSessionDescription(data));
@@ -727,9 +742,10 @@
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       sendSignal("answer", answer);
-      afterCallUpdateLayout();
+      updateLayout();
     });
     connection?.on && connection.on("RecibirRespuesta", async (json) => {
+      console.log("[SignalR] Recibida respuesta:", json);
       const data = JSON.parse(json);
       if (!pc) return;
       await pc.setRemoteDescription(new RTCSessionDescription(data));
@@ -747,6 +763,16 @@
       }
       iniciarConexion(userId);
       afterCallUpdateLayout();
+    });
+
+    btnLlamar.addEventListener("click", () => {
+      const remoteId = remoteIdInput.value.trim();
+      console.log("[UI] Botón Llamar presionado. remoteId:", remoteId);
+      if (remoteId) {
+        startCall(remoteId);
+      } else {
+        alert("Por favor ingresa el ID remoto.");
+      }
     });
 
     // Inicializar layout al cargar
