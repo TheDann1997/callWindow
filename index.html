@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>One-to-One Call Integrado</title>
+  <title>One-to-One Call Integrado 1</title>
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
   <style>
@@ -261,12 +261,36 @@ let isScreenSharing = false;
 let remoteTracks = [];
 let remoteIsScreenSharing = false;
 const miniaturaNormal = document.getElementById("miniaturaNormal");
+const mainAvatar = document.getElementById("mainAvatar");
+const miniAvatar = document.querySelector("#miniaturaNormal .avatar");
 
-function updateMiniaturaDisplay() {
-  // Oculta la miniatura si tú o el remoto están compartiendo pantalla
-  if (miniaturaNormal) {
-    miniaturaNormal.style.display = (isScreenSharing || remoteIsScreenSharing) ? "none" : "flex";
+function updateAvatarsDisplay() {
+  // Miniatura local: mostrar avatar solo si cámara local apagada y no se comparte pantalla (ni local ni remoto)
+  let showMiniAvatar = false;
+  if (!isScreenSharing && !remoteIsScreenSharing) {
+    if (!localStream || localStream.getVideoTracks().length === 0 || !localStream.getVideoTracks()[0].enabled) showMiniAvatar = true;
   }
+  if (miniAvatar) miniAvatar.style.display = showMiniAvatar ? "flex" : "none";
+
+  // Video grande: mostrar avatar solo si cámara remota apagada y no se comparte pantalla (ni local ni remoto)
+  let showMainAvatar = false;
+  if (!isScreenSharing && !remoteIsScreenSharing) {
+    // Buscar si hay un track de video remoto y si está enabled
+    const remoteVideoTrack = remoteTracks.find(t => t.kind === 'video');
+    if (!remoteVideoTrack || (typeof remoteVideoTrack.enabled !== 'undefined' && !remoteVideoTrack.enabled)) showMainAvatar = true;
+  }
+  if (mainAvatar) mainAvatar.style.display = showMainAvatar ? "flex" : "none";
+}
+
+function setMainVideoToScreenWithRemoteAudio() {
+  // Cuando comparto pantalla, muestro mi pantalla y el audio remoto (si existe)
+  const tracks = [];
+  if (screenStream && screenStream.getVideoTracks().length > 0) {
+    tracks.push(screenStream.getVideoTracks()[0]);
+  }
+  // Agregar todos los tracks de audio remoto
+  remoteTracks.forEach(t => { if (t.kind === 'audio') tracks.push(t); });
+  mainVideo.srcObject = new MediaStream(tracks);
 }
 
 function createPeerConnection() {
@@ -293,8 +317,11 @@ function createPeerConnection() {
     // Si yo NO estoy compartiendo pantalla, muestro el stream remoto (audio+video)
     if (!isScreenSharing) {
       mainVideo.srcObject = new MediaStream(remoteTracks);
+    } else {
+      setMainVideoToScreenWithRemoteAudio();
     }
     updateMiniaturaDisplay();
+    updateAvatarsDisplay();
   };
   pc.onconnectionstatechange = () => {
     if (["disconnected", "closed", "failed"].includes(pc.connectionState)) {
@@ -385,6 +412,7 @@ function hangupCall() {
   if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
   if (miniLocalNormal) miniLocalNormal.srcObject = null;
   if (mainVideo) mainVideo.srcObject = null;
+  updateAvatarsDisplay(); // Actualizar avatares al finalizar la llamada
 }
 
 chatButton.addEventListener('click', () => {
@@ -399,6 +427,7 @@ document.querySelector('.toggle-camera').addEventListener('click', function() {
   if (!localStream) return;
   const video = localStream.getVideoTracks()[0];
   if (video) video.enabled = !video.enabled;
+  updateAvatarsDisplay();
 });
 
 document.querySelector('.toggle-mic').addEventListener('click', function() {
@@ -460,10 +489,8 @@ screenToggle.onclick = async () => {
       screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       isScreenSharing = true;
       updateMiniaturaDisplay();
-      if (videoSender && screenStream.getVideoTracks().length > 0) {
-        videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
-      }
-      mainVideo.srcObject = new MediaStream([screenStream.getVideoTracks()[0]]);
+      updateAvatarsDisplay();
+      setMainVideoToScreenWithRemoteAudio();
       screenStream.getVideoTracks()[0].onended = () => {
         if (videoSender && localStream.getVideoTracks().length > 0) {
           videoSender.replaceTrack(localStream.getVideoTracks()[0]);
@@ -471,6 +498,7 @@ screenToggle.onclick = async () => {
         isScreenSharing = false;
         screenStream = null;
         updateMiniaturaDisplay();
+        updateAvatarsDisplay();
         // Volver a mostrar el stream remoto (audio+video)
         if (remoteTracks.length > 0) {
           mainVideo.srcObject = new MediaStream(remoteTracks);
@@ -491,6 +519,7 @@ screenToggle.onclick = async () => {
     }
     isScreenSharing = false;
     updateMiniaturaDisplay();
+    updateAvatarsDisplay();
     // Volver a mostrar el stream remoto (audio+video)
     if (remoteTracks.length > 0) {
       mainVideo.srcObject = new MediaStream(remoteTracks);
