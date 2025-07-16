@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>One-to-One Call 1.3</title>
+  <title>One-to-One 1.4</title>
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
   <style>
@@ -461,6 +461,7 @@ document.querySelector('.toggle-camera').addEventListener('click', function() {
   updateAvatarsDisplay();
 });
 
+// ...existing code...
 document.querySelector('.toggle-mic').addEventListener('click', function() {
   const icon = this.querySelector('i');
   const on = this.getAttribute('data-active') === 'true';
@@ -468,9 +469,26 @@ document.querySelector('.toggle-mic').addEventListener('click', function() {
   this.setAttribute('data-active', !on);
   if (!localStream) return;
   const audio = localStream.getAudioTracks()[0];
-  if (audio) audio.enabled = !audio.enabled;
+  // Buscar el sender de audio en el PeerConnection
+  const sender = pc && pc.getSenders().find(s => s.track && s.track.kind === "audio");
+  if (audio && sender) {
+    if (on) {
+      // Apagar micrófono: reemplazar por track silencioso
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const dst = ctx.createMediaStreamDestination();
+      sender.replaceTrack(dst.stream.getAudioTracks()[0]);
+    } else {
+      // Encender micrófono: restaurar track original
+      sender.replaceTrack(audio);
+    }
+    audio.enabled = !on;
+  } else if (audio) {
+    // Fallback si no hay sender (solo desactivar el track)
+    audio.enabled = !audio.enabled;
+  }
   updateAvatarsDisplay();
 });
+// ...existing code...
 
 document.querySelector('.end-call').onclick = () => {
   hangupCall();
