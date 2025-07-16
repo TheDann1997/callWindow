@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
   <style>
-     body {
+    body {
       margin: 0;
       font-family: sans-serif;
       background: rgba(58, 70, 96, 0.2);
@@ -61,23 +61,25 @@
       align-items: center;
       justify-content: center;
       position: relative;
-      border-radius: 20px 0 0 20px; /* Solo borde redondeado a la izquierda */
+      border-radius: 20px 0 0 20px;
       overflow: hidden;
-    }
-    .video-main, .video-mini, .screen-share {
-      background: linear-gradient(to bottom, #1f2634, #3a4660);
-      border: 2px solid #fff; border-radius: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.4s ease; overflow: hidden;
-      animation: pulse-border 2s infinite;
-      position: absolute;
     }
     .video-main {
       background: linear-gradient(to bottom, #0a2b5c, #ffffff);
       width: 98%; height: 99%;
       top: 0; left: 0;
       position: absolute;
+      border: 2px solid #fff; border-radius: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.4s ease; overflow: hidden;
+      animation: pulse-border 2s infinite;
+    }
+    .video-main video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: linear-gradient(to bottom, #ffffff, #0a2b5c);
     }
     .video-mini {
       background: linear-gradient(to bottom, #ffffff, #0a2b5c);
@@ -89,28 +91,16 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-direction: column;	  
+      flex-direction: column;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      border: 2px solid #fff;
+      animation: pulse-border 2s infinite;
     }
-	
-.video-main video,
-.video-mini video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  background: linear-gradient(to bottom, #ffffff, #0a2b5c);
-}
-	
-    .screen-share {
-      display: none;
-      justify-content: center; align-items: center;
-      color: white; font-size: 24px; padding: 20px;
-      box-sizing: border-box; text-align: center;
-      width: 100%; height: 100%; border-radius: 20px;
-      background: linear-gradient(to bottom, #1f2634, #3a4660);
-      border: 2px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-      top: 0; left: 0;
-      position: absolute;
-      z-index: 1;
+    .video-mini video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: linear-gradient(to bottom, #ffffff, #0a2b5c);
     }
     .avatar {
       position: absolute;
@@ -135,84 +125,6 @@
       padding: 2px 6px; border-radius: 6px;
       font-size: 10px; z-index: 2;
     }
-
-    /* -------- PANEL DE MINIATURAS CENTRADO Y FIJO A LA DERECHA -------- */
-  .miniaturas-panel {
-  display: none;
-  margin-top: 30px;
-  flex-direction: column;
-  align-items: center;        /* o flex-start si quieres pegadas a la izquierda */
-  justify-content: flex-start; /* PEGADAS ARRIBA */
-  gap: 10px;
-  width: 250px;
-  height: 100vh;
-  background: transparent;
-  z-index: 10;
-}
-.miniaturas-panel .video-mini {
-  position: relative !important;
-  margin: 0;
-  margin-left: 100px;   /* mueve cada miniatura a la izquierda dentro del panel */
-  width: 220px;
-  height: 130px;
-  border-radius: 16px;
-  box-sizing: border-box;
-  background: linear-gradient(to bottom, #1f2634, #3a4660);
-  border: 2px solid #fff;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.20);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-    .miniaturas-panel .avatar {
-      width: 60px; height: 60px; font-size: 22px;
-      left: 50%; top: 38%;
-      transform: translate(-50%, -50%);
-      position: absolute;
-      border-radius: 50%;
-      border: 2px solid #fff;
-      background: transparent;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      box-shadow: 0 0 0 2px #fff4, 0 0 15px #fff4;
-    }
-    .miniaturas-panel .mini-name {
-      position: absolute;
-      left: 12px; bottom: 12px;
-      background: rgba(0,0,0,0.7);
-      color: #fff;
-      padding: 3px 10px;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-    }
-    /* Oculta los videos flotantes en pantalla compartida */
-    .main-call.screen-mode .video-area .video-main,
-    .main-call.screen-mode .video-area .video-mini {
-      display: none !important;
-    }
-    .main-call.screen-mode .screen-share {
-      display: flex !important;
-    }
-    /* Muestra las miniaturas SOLO en screen-mode */
-    .main-call.screen-mode .miniaturas-panel {
-      display: flex;
-    }
-    /* Miniatura flotante sólo en modo normal */
-    .main-call:not(.screen-mode) .video-area .video-mini {
-      display: flex;
-    }
-    .main-call.screen-mode .video-area .video-mini {
-      display: none !important;
-    }
-    /* Ocultar miniaturas panel fuera de screen-mode */
-    .main-call:not(.screen-mode) .miniaturas-panel {
-      display: none !important;
-    }
-    /* Ajusta el chat para que esté a la derecha si está activo */
     .call-chat {
       width: 0; transition: width 0.4s ease; overflow: hidden;
       background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
@@ -264,13 +176,6 @@
     .emoji-float.show {
       transform: translate(-50%,-50%) scale(1); opacity:1;
     }
-	
-	 .screen-share video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: 20px;
-    }
   </style>
 </head>
 <body>
@@ -282,48 +187,33 @@
       <button class="side-btn" id="screenToggle"><i class="ph ph-monitor"></i></button>
       <button class="side-btn toggle-emoji" id="emojiToggle"><i class="ph ph-smiley"></i></button>
       <button class="side-btn end-call"><i class="ph ph-phone-disconnect"></i></button>
-	  
-	 <input type="text" id="userIdInput" placeholder="Tu ID" style="width: 50px; padding: 5px; font-size: 12px; border-radius: 8px; border: none;">
-<button class="side-btn" id="startConnectionBtn"><i class="ph ph-plug"></i></button>
-
-	  <div style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 5px;">
-  <input id="remoteIdInput" type="text" placeholder="ID remoto" style="width: 90%; padding: 4px; border-radius: 6px; border: none; text-align: center;" />
-  <button id="btnLlamar" class="side-btn" style="width: 90%; font-size: 14px; padding: 6px;">Llamar</button>
-</div>
-
-	  
+      <input type="text" id="userIdInput" placeholder="Tu ID" style="width: 50px; padding: 5px; font-size: 12px; border-radius: 8px; border: none;">
+      <button class="side-btn" id="startConnectionBtn"><i class="ph ph-plug"></i></button>
+      <div style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 5px;">
+        <input id="remoteIdInput" type="text" placeholder="ID remoto" style="width: 90%; padding: 4px; border-radius: 6px; border: none; text-align: center;" />
+        <button id="btnLlamar" class="side-btn" style="width: 90%; font-size: 14px; padding: 6px;">Llamar</button>
+      </div>
     </aside>
-
     <main class="main-call" id="mainCall">
       <div id="emojiPanel">
         <span>😀</span><span>😂</span><span>😍</span><span>👍</span>
         <span>😭</span><span>😡</span><span>😎</span><span>🙌</span>
         <span>👏</span><span>🔥</span><span>💯</span><span>❤️</span>
       </div>
-
       <div class="video-area">
-        <div class="screen-share" id="screenShareDiv" style="display:none;">
-          <video id="screenShareVideo" autoplay></video>
-        </div>
-        <!-- Video principal grande (normal mode o pantalla compartida) -->
+        <!-- Video principal grande: SIEMPRE la cámara/pantalla remota -->
         <div class="video-main" id="videoMainContainer">
-          <video id="mainVideo" autoplay></video>
+          <video id="mainVideo" autoplay playsinline></video>
           <div class="avatar" id="mainAvatar">DA</div>
-          <div class="mini-name" id="mainName">Daniel</div>
+          <div class="mini-name" id="mainName">Remoto</div>
         </div>
-        <!-- Miniatura flotante abajo derecha (solo modo normal) -->
+        <!-- Miniatura flotante abajo derecha: SIEMPRE tu cámara -->
         <div class="video-mini" id="miniaturaNormal">
-          <video id="miniLocalNormal" autoplay muted></video>
-          <div class="avatar">YM</div>
-          <div class="mini-name">Yolanda</div>
+          <video id="miniLocalNormal" autoplay muted playsinline></video>
+          <div class="avatar">YO</div>
+          <div class="mini-name">Tú</div>
         </div>
       </div>
-
-      <!-- Miniaturas en screen-mode, CENTRADAS Y VERTICALES, NO SE MONTAN -->
-      <div class="miniaturas-panel" id="miniaturasPanel">
-        <!-- Se llenará dinámicamente -->
-      </div>
-
       <div class="call-chat" id="callChat">
         <div class="chat-header">Chat de llamada</div>
         <div class="chat-messages">
@@ -341,517 +231,205 @@
         </div>
       </div>
     </main>
-    
     <div class="emoji-float" id="emojiFloat"></div>
   </div>
-
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
   <script>
-  
-    const chatButton = document.getElementById('chatToggle');
-    const callChat = document.getElementById('callChat');
-    const mainCall = document.getElementById('mainCall');
-    const emojiToggle = document.getElementById('emojiToggle');
-    const emojiPanel = document.getElementById('emojiPanel');
-    const emojiFloat = document.getElementById('emojiFloat');
-    const screenToggle = document.getElementById('screenToggle');
-    // Elimina referencias a remoteVideo y localVideo, usa mainVideo y miniLocalNormal
-    const mainVideo = document.getElementById("mainVideo");
-    const miniLocalNormal = document.getElementById("miniLocalNormal");
-    const remoteIdInput = document.getElementById("remoteIdInput");
-    const btnLlamar = document.getElementById("btnLlamar");
-    const startConnectionBtn = document.getElementById("startConnectionBtn");
-    const userIdInput = document.getElementById("userIdInput");
-    const screenShareDiv = document.getElementById("screenShareDiv");
-    const screenShareVideo = document.getElementById("screenShareVideo");
-    const videoMainContainer = document.getElementById("videoMainContainer");
+// --- JS LIMPIO PARA VIDEOLLAMADA 1 a 1 ---
+const chatButton = document.getElementById('chatToggle');
+const callChat = document.getElementById('callChat');
+const emojiToggle = document.getElementById('emojiToggle');
+const emojiPanel = document.getElementById('emojiPanel');
+const emojiFloat = document.getElementById('emojiFloat');
+const screenToggle = document.getElementById('screenToggle');
+const mainVideo = document.getElementById("mainVideo");
+const miniLocalNormal = document.getElementById("miniLocalNormal");
+const remoteIdInput = document.getElementById("remoteIdInput");
+const btnLlamar = document.getElementById("btnLlamar");
+const startConnectionBtn = document.getElementById("startConnectionBtn");
+const userIdInput = document.getElementById("userIdInput");
 
-    let localStream = null;
-    let remoteStream = null;
-    let pc = null;
-    let connection = null;
-    let localUserId = null;
-    let remoteUserId = null;
-    let pendingCandidates = [];
-    let screenSender = null; // Para poder remover el track de pantalla luego
-    let remoteCameraTrack = null;
-    let remoteScreenTrack = null;
+let localStream = null;
+let pc = null;
+let connection = null;
+let localUserId = null;
+let remoteUserId = null;
+let pendingCandidates = [];
+let remoteVideoTrack = null;
 
-    function createPeerConnection() {
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-      });
-      remoteCameraTrack = null;
-      remoteScreenTrack = null;
-      // No asignar a remoteVideo.srcObject, sino actualizar el stream en el layout cuando sea necesario
-      pc.onicecandidate = event => {
-        if (event.candidate) sendSignal("candidate", event.candidate);
-      };
-      pc.ontrack = event => {
-        event.streams[0].getTracks().forEach(track => {
-          if (track.kind === 'video') {
-            if (track.label.toLowerCase().includes('screen') || track.label.toLowerCase().includes('window')) {
-              remoteScreenTrack = track;
-            } else {
-              remoteCameraTrack = track;
-            }
-          }
-        });
-        updateLayout();
-      };
-      pc.onconnectionstatechange = () => {
-        if (["disconnected", "closed", "failed"].includes(pc.connectionState)) {
-          hangupCall();
-        }
-      };
-      return pc;
+function createPeerConnection() {
+  const pc = new RTCPeerConnection({
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  });
+  remoteVideoTrack = null;
+  pc.onicecandidate = event => {
+    if (event.candidate) sendSignal("candidate", event.candidate);
+  };
+  pc.ontrack = event => {
+    // Solo nos interesa el track de video remoto (cámara o pantalla)
+    const videoTrack = event.streams[0].getVideoTracks()[0];
+    if (videoTrack) {
+      remoteVideoTrack = videoTrack;
+      mainVideo.srcObject = new MediaStream([remoteVideoTrack]);
     }
-
-    async function iniciarConexion(userId) {
-      localUserId = userId;
-      connection = new signalR.HubConnectionBuilder()
-        .withUrl(`https://signalr2.onrender.com/chathub?userId=${userId}`)
-        .configureLogging(signalR.LogLevel.Information)
-        .build();
-		
-		<!-- connection = new signalR.HubConnectionBuilder() -->
-    <!-- .withUrl(`https://signalr2.onrender.com/chathub?userId=${userId}`, { -->
-        <!-- transport: signalR.HttpTransportType.WebSockets -->
-    <!-- }) -->
-    <!-- .configureLogging(signalR.LogLevel.Information) -->
-    <!-- .build(); -->
-
-      connection.on("RecibirOferta", async (json, emisorId) => {
-        console.log("[SignalR] Recibida oferta de:", emisorId, json);
-        const data = JSON.parse(json);
-        remoteUserId = emisorId;
-        if (pc) hangupCall(false);
-        pc = createPeerConnection();
-        if (!localStream) {
-          console.log("[startCall] Solicitando acceso a cámara/micrófono...");
-          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-          if (miniLocalNormal) miniLocalNormal.srcObject = localStream;
-        }
-        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-        await pc.setRemoteDescription(new RTCSessionDescription(data));
-        for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
-        pendingCandidates = [];
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        sendSignal("answer", answer);
-      });
-
-      connection.on("RecibirRespuesta", async (json) => {
-        console.log("[SignalR] Recibida respuesta:", json);
-        const data = JSON.parse(json);
-        if (!pc) return;
-        await pc.setRemoteDescription(new RTCSessionDescription(data));
-        for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
-        pendingCandidates = [];
-      });
-
-      connection.on("RecibirIceCandidate", async (json) => {
-        console.log("[SignalR] Recibido candidato ICE:", json);
-        const data = JSON.parse(json);
-        if (pc && pc.remoteDescription && pc.remoteDescription.type) {
-          await pc.addIceCandidate(new RTCIceCandidate(data));
-        } else {
-          pendingCandidates.push(data);
-        }
-      });
-
-      connection.on("ModoPantallaRemoto", (activo) => {
-        if (activo) {
-          mainCall.classList.add("screen-mode");
-        } else {
-          mainCall.classList.remove("screen-mode");
-        }
-      });
-
-      try {
-        await connection.start();
-        console.log("Conectado a SignalR");
-      } catch (err) {
-        alert("Error conexión SignalR: " + err);
-      }
-    }
-
-    function sendSignal(type, data) {
-      if (!remoteUserId || !connection) {
-        console.warn("[sendSignal] No hay remoteUserId o conexión");
-        return;
-      }
-      const payload = JSON.stringify(data);
-      console.log(`[sendSignal] Enviando señal: ${type} a ${remoteUserId}`, data);
-      switch (type) {
-        case "offer": connection.invoke("EnviarOferta", remoteUserId, payload); break;
-        case "answer": connection.invoke("EnviarRespuesta", remoteUserId, payload); break;
-        case "candidate": connection.invoke("EnviarIceCandidate", remoteUserId, payload); break;
-      }
-    }
-
-    async function startCall(remoteId) {
-      console.log("[startCall] Iniciando llamada a:", remoteId);
-      if (!connection || connection.state !== "Connected") {
-        console.warn("[startCall] No hay conexión activa a SignalR");
-        alert("Primero debes iniciar la conexión"); return;
-      }
-      remoteUserId = remoteId;
-      if (pc) hangupCall(false);
-      pc = createPeerConnection();
-      if (!localStream) {
-        console.log("[startCall] Solicitando acceso a cámara/micrófono...");
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        if (miniLocalNormal) miniLocalNormal.srcObject = localStream;
-      }
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      console.log("[startCall] Oferta creada y localDescription seteada. Enviando señal...");
-      sendSignal("offer", offer);
-      updateLayout();
-    }
-
-    function hangupCall() {
-      if (pc) { pc.close(); pc = null; }
-      if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
-      if (remoteStream) { remoteStream.getTracks().forEach(track => track.stop()); remoteStream = null; }
-      if (miniLocalNormal) miniLocalNormal.srcObject = null;
-      if (mainVideo) mainVideo.srcObject = null;
-      afterCallUpdateLayout();
-    }
-
-    chatButton.addEventListener('click', () => {
-      callChat.classList.toggle('active');
-      mainCall.classList.toggle('chat-open');
-    });
-
-    document.querySelector('.toggle-camera').addEventListener('click', function() {
-      const icon = this.querySelector('i');
-      const on = this.getAttribute('data-active') === 'true';
-      icon.className = on ? 'ph ph-camera-slash' : 'ph ph-camera';
-      this.setAttribute('data-active', !on);
-      if (!localStream) return;
-      const video = localStream.getVideoTracks()[0];
-      if (video) video.enabled = !video.enabled;
-    });
-
-    document.querySelector('.toggle-mic').addEventListener('click', function() {
-      const icon = this.querySelector('i');
-      const on = this.getAttribute('data-active') === 'true';
-      icon.className = on ? 'ph ph-microphone-slash' : 'ph ph-microphone';
-      this.setAttribute('data-active', !on);
-      if (!localStream) return;
-      const audio = localStream.getAudioTracks()[0];
-      if (audio) audio.enabled = !audio.enabled;
-    });
-
-    document.querySelector('.end-call').onclick = () => {
+  };
+  pc.onconnectionstatechange = () => {
+    if (["disconnected", "closed", "failed"].includes(pc.connectionState)) {
       hangupCall();
-    };
-
-    emojiToggle.addEventListener('click', e => {
-      emojiPanel.style.display = emojiPanel.style.display === 'flex' ? 'none' : 'flex';
-      e.stopPropagation();
-    });
-
-    emojiPanel.querySelectorAll('span').forEach(s => {
-      s.addEventListener('click', () => {
-        emojiFloat.textContent = s.textContent;
-        emojiFloat.classList.add('show');
-        emojiPanel.style.display = 'none';
-        setTimeout(() => emojiFloat.classList.remove('show'), 1500);
-      });
-    });
-
-    window.addEventListener('click', e => {
-      if (!emojiPanel.contains(e.target) && !emojiToggle.contains(e.target))
-        emojiPanel.style.display = 'none';
-    });
-
-    let screenStream = null;
-    let isScreenSharing = false;
-
-    // Añadir helpers para distinguir tracks de cámara y pantalla
-    function getCameraTrack(stream) {
-      if (!stream) return null;
-      return stream.getTracks().find(t => t.kind === 'video' && t.label.toLowerCase().indexOf('screen') === -1);
     }
-    function getScreenTrack(stream) {
-      if (!stream) return null;
-      return stream.getTracks().find(t => t.kind === 'video' && t.label.toLowerCase().indexOf('screen') !== -1);
+  };
+  return pc;
+}
+
+async function iniciarConexion(userId) {
+  localUserId = userId;
+  connection = new signalR.HubConnectionBuilder()
+    .withUrl(`https://signalr2.onrender.com/chathub?userId=${userId}`)
+    .configureLogging(signalR.LogLevel.Information)
+    .build();
+
+  connection.on("RecibirOferta", async (json, emisorId) => {
+    const data = JSON.parse(json);
+    remoteUserId = emisorId;
+    if (pc) hangupCall(false);
+    pc = createPeerConnection();
+    if (!localStream) {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      miniLocalNormal.srcObject = localStream;
     }
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    await pc.setRemoteDescription(new RTCSessionDescription(data));
+    for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
+    pendingCandidates = [];
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    sendSignal("answer", answer);
+  });
 
-    function setLayoutNormal() {
-      mainCall.classList.remove("screen-mode");
-      // Oculta pantalla compartida, muestra video principal
-      if (screenShareDiv) screenShareDiv.style.display = "none";
-      if (videoMainContainer) videoMainContainer.style.display = "block";
-      // Video grande: el de la otra persona (cámara)
-      if (typeof mainVideo !== 'undefined' && mainVideo) {
-        if (remoteCameraTrack) {
-          // Creamos un nuevo MediaStream solo con la cámara remota
-          const camStream = new MediaStream([remoteCameraTrack]);
-          mainVideo.srcObject = camStream;
-          if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "none";
-          if (typeof mainName !== 'undefined' && mainName) mainName.textContent = remoteUserId || "Remoto";
-        } else {
-          mainVideo.srcObject = null;
-          if (typeof mainAvatar !== 'undefined' && mainAvatar) mainAvatar.style.display = "block";
-          if (typeof mainName !== 'undefined' && mainName) mainName.textContent = remoteUserId || "Remoto";
-        }
-      }
-      // Miniatura: tu propia cámara
-      if (typeof miniaturaNormal !== 'undefined' && miniaturaNormal) miniaturaNormal.style.display = "flex";
-      if (typeof miniLocalNormal !== 'undefined' && miniLocalNormal && localStream) {
-        const localCameraTrack = getCameraTrack(localStream);
-        if (localCameraTrack) {
-          miniLocalNormal.srcObject = new MediaStream([localCameraTrack]);
-        } else {
-          miniLocalNormal.srcObject = null;
-        }
-      }
-      var miniaturasPanel = document.getElementById("miniaturasPanel");
-      if (miniaturasPanel) miniaturasPanel.style.display = "flex";
-      actualizarMiniaturasPanel();
+  connection.on("RecibirRespuesta", async (json) => {
+    const data = JSON.parse(json);
+    if (!pc) return;
+    await pc.setRemoteDescription(new RTCSessionDescription(data));
+    for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
+    pendingCandidates = [];
+  });
+
+  connection.on("RecibirIceCandidate", async (json) => {
+    const data = JSON.parse(json);
+    if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+      await pc.addIceCandidate(new RTCIceCandidate(data));
+    } else {
+      pendingCandidates.push(data);
     }
+  });
 
-    function setLayoutScreenShare() {
-      mainCall.classList.add("screen-mode");
-      // Mostrar pantalla compartida si existe
-      if (screenShareDiv) screenShareDiv.style.display = "block";
-      if (videoMainContainer) videoMainContainer.style.display = "none";
-      if (typeof screenShareVideo !== 'undefined' && screenShareVideo) {
-        let screenTrack = null;
-        if (screenStream && isScreenSharing) {
-          // Compartidor: muestra su propio screenStream
-          const tracks = screenStream.getVideoTracks();
-          if (tracks.length > 0) screenTrack = tracks[0];
-        } else {
-          // Receptor: usa remoteScreenTrack
-          screenTrack = remoteScreenTrack;
-        }
-        if (screenTrack) {
-          screenShareVideo.srcObject = new MediaStream([screenTrack]);
-          screenShareVideo.muted = true;
-        } else {
-          screenShareVideo.srcObject = null;
-        }
-      }
-      // Oculta miniatura normal y panel de miniaturas
-      if (typeof miniaturaNormal !== 'undefined' && miniaturaNormal) miniaturaNormal.style.display = "none";
-      var miniaturasPanel = document.getElementById("miniaturasPanel");
-      if (miniaturasPanel) miniaturasPanel.style.display = "none";
-    }
+  try {
+    await connection.start();
+  } catch (err) {
+    alert("Error conexión SignalR: " + err);
+  }
+}
 
-    function actualizarMiniaturasPanel() {
-      const miniaturasPanel = document.getElementById("miniaturasPanel");
-      if (!miniaturasPanel) return;
-      miniaturasPanel.innerHTML = "";
-      // Miniatura local (cámara)
-      const miniLocal = document.createElement("div");
-      miniLocal.className = "video-mini";
-      const videoLocal = document.createElement("video");
-      videoLocal.autoplay = true;
-      videoLocal.muted = true;
-      videoLocal.playsInline = true;
-      let localCameraTrack = getCameraTrack(localStream);
-      if (!localCameraTrack && localStream) {
-        // Fallback: si solo hay un track de video
-        const videoTracks = localStream.getVideoTracks();
-        if (videoTracks.length > 0) localCameraTrack = videoTracks[0];
-      }
-      if (localCameraTrack) videoLocal.srcObject = new MediaStream([localCameraTrack]);
-      miniLocal.appendChild(videoLocal);
-      const avatarLocal = document.createElement("div");
-      avatarLocal.className = "avatar";
-      avatarLocal.textContent = userIdInput && userIdInput.value ? userIdInput.value.substring(0,2).toUpperCase() : "YO";
-      miniLocal.appendChild(avatarLocal);
-      const nameLocal = document.createElement("div");
-      nameLocal.className = "mini-name";
-      nameLocal.textContent = "Tú";
-      miniLocal.appendChild(nameLocal);
-      miniaturasPanel.appendChild(miniLocal);
-      // Miniatura remota (cámara)
-      const miniRemote = document.createElement("div");
-      miniRemote.className = "video-mini";
-      const videoRemote = document.createElement("video");
-      videoRemote.autoplay = true;
-      videoRemote.playsInline = true;
-      let remoteCameraTrack = null;
-      const videoTracks = remoteStream ? remoteStream.getVideoTracks() : [];
-      console.log('[Miniatura][Remota] Tracks de remoteStream:', videoTracks.map(t => t.label));
-      // 1. Busca por label 'camera', 'face', o que no sea 'screen'/'window'
-      remoteCameraTrack = videoTracks.find(t => t.label.toLowerCase().includes('camera') || t.label.toLowerCase().includes('face'));
-      if (!remoteCameraTrack) {
-        remoteCameraTrack = videoTracks.find(t => !t.label.toLowerCase().includes('screen') && !t.label.toLowerCase().includes('window'));
-      }
-      // 2. Si hay dos tracks, el que no sea pantalla
-      if (!remoteCameraTrack && videoTracks.length === 2) {
-        const screenTrack = videoTracks.find(t => t.label.toLowerCase().includes('screen') || t.label.toLowerCase().includes('window'));
-        remoteCameraTrack = videoTracks.find(t => t !== screenTrack);
-        console.log('[Miniatura][Remota] Fallback: usando el track que no es pantalla como cámara', remoteCameraTrack?.label);
-      }
-      // 3. Si solo hay uno, úsalo como fallback
-      if (!remoteCameraTrack && videoTracks.length === 1) {
-        remoteCameraTrack = videoTracks[0];
-        console.log('[Miniatura][Remota] Fallback: solo hay un track, usándolo como cámara', remoteCameraTrack?.label);
-      }
-      if (remoteCameraTrack) {
-        videoRemote.srcObject = new MediaStream([remoteCameraTrack]);
-        videoRemote.muted = false;
-        console.log('[Miniatura][Remota] Mostrando cámara remota:', remoteCameraTrack.label);
-      } else {
-        videoRemote.srcObject = null;
-        console.log('[Miniatura][Remota] No se encontró track de cámara para mostrar');
-      }
-      miniRemote.appendChild(videoRemote);
-      const avatarRemote = document.createElement("div");
-      avatarRemote.className = "avatar";
-      avatarRemote.textContent = remoteUserId ? remoteUserId.substring(0,2).toUpperCase() : "R";
-      miniRemote.appendChild(avatarRemote);
-      const nameRemote = document.createElement("div");
-      nameRemote.className = "mini-name";
-      nameRemote.textContent = remoteUserId || "Remoto";
-      miniRemote.appendChild(nameRemote);
-      miniaturasPanel.appendChild(miniRemote);
-    }
+function sendSignal(type, data) {
+  if (!remoteUserId || !connection) return;
+  const payload = JSON.stringify(data);
+  switch (type) {
+    case "offer": connection.invoke("EnviarOferta", remoteUserId, payload); break;
+    case "answer": connection.invoke("EnviarRespuesta", remoteUserId, payload); break;
+    case "candidate": connection.invoke("EnviarIceCandidate", remoteUserId, payload); break;
+  }
+}
 
-    // Cambia el layout según el modo
-    function updateLayout() {
-      if (isScreenSharing) {
-        setLayoutScreenShare();
-      } else {
-        setLayoutNormal();
-      }
-    }
+async function startCall(remoteId) {
+  if (!connection || connection.state !== "Connected") {
+    alert("Primero debes iniciar la conexión"); return;
+  }
+  remoteUserId = remoteId;
+  if (pc) hangupCall(false);
+  pc = createPeerConnection();
+  if (!localStream) {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    miniLocalNormal.srcObject = localStream;
+  }
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  sendSignal("offer", offer);
+}
 
-    screenToggle.onclick = async () => {
-      if (!localStream || !pc) {
-        isScreenSharing = false;
-        updateLayout();
-        return;
-      }
-      try {
-        if (!isScreenSharing) {
-          // Iniciar compartir pantalla
-          screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-          console.log('[ScreenShare] screenStream obtenido:', screenStream);
-          isScreenSharing = true;
-          // Reemplazar el track de cámara por el de pantalla
-          const sender = pc.getSenders().find(s => s.track && s.track.kind === "video");
-          if (sender && screenStream.getVideoTracks().length > 0) {
-            sender.replaceTrack(screenStream.getVideoTracks()[0]);
-            if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, true);
-          }
-          updateLayout();
-          screenStream.getVideoTracks()[0].onended = () => {
-            // Al dejar de compartir
-            if (sender && localStream.getVideoTracks().length > 0) {
-              sender.replaceTrack(localStream.getVideoTracks()[0]);
-              if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, false);
-            }
-            isScreenSharing = false;
-            screenStream = null;
-            updateLayout();
-          };
-        } else {
-          // Detener compartir pantalla manualmente
-          if (screenStream) {
-            screenStream.getTracks().forEach(track => track.stop());
-            screenStream = null;
-          }
-          const sender = pc.getSenders().find(s => s.track && s.track.kind === "video");
-          if (sender && localStream && localStream.getVideoTracks().length > 0) {
-            sender.replaceTrack(localStream.getVideoTracks()[0]);
-            if (connection) connection.invoke("CambiarModoPantalla", remoteUserId, false);
-          }
-          isScreenSharing = false;
-          updateLayout();
-        }
-      } catch (e) {
-        console.error("Error al compartir pantalla:", e);
-      }
-    };
+function hangupCall() {
+  if (pc) { pc.close(); pc = null; }
+  if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
+  if (miniLocalNormal) miniLocalNormal.srcObject = null;
+  if (mainVideo) mainVideo.srcObject = null;
+}
 
-    // Escuchar cambios de modo de pantalla desde el remoto
-    connection?.on && connection.on("ModoPantallaRemoto", (activo) => {
-      isScreenSharing = activo;
-      updateLayout();
-    });
+chatButton.addEventListener('click', () => {
+  callChat.classList.toggle('active');
+});
 
-    // Al iniciar o terminar llamada, actualizar layout
-    function afterCallUpdateLayout() {
-      isScreenSharing = false;
-      screenStream = null;
-      updateLayout();
-    }
+document.querySelector('.toggle-camera').addEventListener('click', function() {
+  const icon = this.querySelector('i');
+  const on = this.getAttribute('data-active') === 'true';
+  icon.className = on ? 'ph ph-camera-slash' : 'ph ph-camera';
+  this.setAttribute('data-active', !on);
+  if (!localStream) return;
+  const video = localStream.getVideoTracks()[0];
+  if (video) video.enabled = !video.enabled;
+});
 
-    // Llamar afterCallUpdateLayout en los lugares correctos
-    function hangupCall() {
-      if (pc) { pc.close(); pc = null; }
-      if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
-      if (remoteStream) { remoteStream.getTracks().forEach(track => track.stop()); remoteStream = null; }
-      if (miniLocalNormal) miniLocalNormal.srcObject = null;
-      if (mainVideo) mainVideo.srcObject = null;
-      afterCallUpdateLayout();
-    }
+document.querySelector('.toggle-mic').addEventListener('click', function() {
+  const icon = this.querySelector('i');
+  const on = this.getAttribute('data-active') === 'true';
+  icon.className = on ? 'ph ph-microphone-slash' : 'ph ph-microphone';
+  this.setAttribute('data-active', !on);
+  if (!localStream) return;
+  const audio = localStream.getAudioTracks()[0];
+  if (audio) audio.enabled = !audio.enabled;
+});
 
-    // Al recibir nueva llamada o respuesta, actualizar layout
-    connection?.on && connection.on("RecibirOferta", async (json, emisorId) => {
-      console.log("[SignalR] Recibida oferta de:", emisorId, json);
-      const data = JSON.parse(json);
-      remoteUserId = emisorId;
-      if (pc) hangupCall(false);
-      pc = createPeerConnection();
-      if (!localStream) {
-        console.log("[startCall] Solicitando acceso a cámara/micrófono...");
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        if (miniLocalNormal) miniLocalNormal.srcObject = localStream;
-      }
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-      await pc.setRemoteDescription(new RTCSessionDescription(data));
-      for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
-      pendingCandidates = [];
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      sendSignal("answer", answer);
-      updateLayout();
-    });
-    connection?.on && connection.on("RecibirRespuesta", async (json) => {
-      console.log("[SignalR] Recibida respuesta:", json);
-      const data = JSON.parse(json);
-      if (!pc) return;
-      await pc.setRemoteDescription(new RTCSessionDescription(data));
-      for (const cand of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(cand));
-      pendingCandidates = [];
-      afterCallUpdateLayout();
-    });
+document.querySelector('.end-call').onclick = () => {
+  hangupCall();
+};
 
-    // Al iniciar conexión, actualizar layout
-    startConnectionBtn.addEventListener("click", () => {
-      const userId = userIdInput.value.trim();
-      if (!userId) {
-        alert("Por favor ingresa tu ID antes de conectar.");
-        return;
-      }
-      iniciarConexion(userId);
-      afterCallUpdateLayout();
-    });
+emojiToggle.addEventListener('click', e => {
+  emojiPanel.style.display = emojiPanel.style.display === 'flex' ? 'none' : 'flex';
+  e.stopPropagation();
+});
 
-    btnLlamar.addEventListener("click", () => {
-      const remoteId = remoteIdInput.value.trim();
-      console.log("[UI] Botón Llamar presionado. remoteId:", remoteId);
-      if (remoteId) {
-        startCall(remoteId);
-      } else {
-        alert("Por favor ingresa el ID remoto.");
-      }
-    });
+emojiPanel.querySelectorAll('span').forEach(s => {
+  s.addEventListener('click', () => {
+    emojiFloat.textContent = s.textContent;
+    emojiFloat.classList.add('show');
+    emojiPanel.style.display = 'none';
+    setTimeout(() => emojiFloat.classList.remove('show'), 1500);
+  });
+});
 
-    // Inicializar layout al cargar
-    updateLayout();
+window.addEventListener('click', e => {
+  if (!emojiPanel.contains(e.target) && !emojiToggle.contains(e.target))
+    emojiPanel.style.display = 'none';
+});
+
+startConnectionBtn.addEventListener("click", () => {
+  const userId = userIdInput.value.trim();
+  if (!userId) {
+    alert("Por favor ingresa tu ID antes de conectar.");
+    return;
+  }
+  iniciarConexion(userId);
+});
+
+btnLlamar.addEventListener("click", () => {
+  const remoteId = remoteIdInput.value.trim();
+  if (remoteId) {
+    startCall(remoteId);
+  } else {
+    alert("Por favor ingresa el ID remoto.");
+  }
+});
   </script>
 </body>
 </html>
+
+
