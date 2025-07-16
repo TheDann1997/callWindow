@@ -621,16 +621,15 @@
       if (screenShareDiv) screenShareDiv.style.display = "block";
       if (videoMainContainer) videoMainContainer.style.display = "none";
       if (typeof screenShareVideo !== 'undefined' && screenShareVideo) {
-        // Buscar el track de pantalla en local o remoto
         let screenTrack = null;
         if (screenStream && isScreenSharing) {
           // Compartidor: muestra su propio screenStream
           const tracks = screenStream.getVideoTracks();
           if (tracks.length > 0) screenTrack = tracks[0];
         } else {
-          // Receptor: busca el track de pantalla en remoteStream
+          // Receptor: toma el primer track de video disponible
           const videoTracks = remoteStream ? remoteStream.getVideoTracks() : [];
-          screenTrack = videoTracks[0]; // Solo hay un track: el de pantalla
+          if (videoTracks.length > 0) screenTrack = videoTracks[0];
         }
         if (screenTrack) {
           screenShareVideo.srcObject = new MediaStream([screenTrack]);
