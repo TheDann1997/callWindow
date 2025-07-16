@@ -256,6 +256,8 @@ let localUserId = null;
 let remoteUserId = null;
 let pendingCandidates = [];
 let remoteVideoTrack = null;
+let screenStream = null;
+let isScreenSharing = false;
 
 function createPeerConnection() {
   const pc = new RTCPeerConnection({
@@ -428,6 +430,40 @@ btnLlamar.addEventListener("click", () => {
     alert("Por favor ingresa el ID remoto.");
   }
 });
+
+screenToggle.onclick = async () => {
+  if (!localStream || !pc) return;
+  const videoSender = pc.getSenders().find(s => s.track && s.track.kind === "video");
+  if (!isScreenSharing) {
+    try {
+      screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      isScreenSharing = true;
+      if (videoSender && screenStream.getVideoTracks().length > 0) {
+        videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
+      }
+      // Cuando el usuario deja de compartir pantalla
+      screenStream.getVideoTracks()[0].onended = () => {
+        if (videoSender && localStream.getVideoTracks().length > 0) {
+          videoSender.replaceTrack(localStream.getVideoTracks()[0]);
+        }
+        isScreenSharing = false;
+        screenStream = null;
+      };
+    } catch (e) {
+      alert("No se pudo compartir pantalla: " + e);
+    }
+  } else {
+    // Detener compartir pantalla manualmente
+    if (screenStream) {
+      screenStream.getTracks().forEach(track => track.stop());
+      screenStream = null;
+    }
+    if (videoSender && localStream.getVideoTracks().length > 0) {
+      videoSender.replaceTrack(localStream.getVideoTracks()[0]);
+    }
+    isScreenSharing = false;
+  }
+};
   </script>
 </body>
 </html>
