@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Call Integrado 1</title>
+  <title>Call Integrado 1.1</title>
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
   <style>
@@ -263,6 +263,13 @@ let remoteIsScreenSharing = false;
 const miniaturaNormal = document.getElementById("miniaturaNormal");
 const mainAvatar = document.getElementById("mainAvatar");
 const miniAvatar = document.querySelector("#miniaturaNormal .avatar");
+
+function updateMiniaturaDisplay() {
+  if (miniaturaNormal) {
+    miniaturaNormal.style.display = (isScreenSharing || remoteIsScreenSharing) ? "none" : "flex";
+  }
+  updateAvatarsDisplay();
+}
 
 function updateAvatarsDisplay() {
   // Miniatura local: mostrar avatar solo si cámara local apagada y no se comparte pantalla (ni local ni remoto)
