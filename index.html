@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Call Integrado 1.1</title>
+  <title>Call Integrado 1.2</title>
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
   <style>
@@ -306,14 +306,26 @@ function createPeerConnection() {
   });
   remoteTracks = [];
   remoteIsScreenSharing = false;
+
+  function handleRemoteTrackEvents(track) {
+    // Actualizar layout y avatares cuando el track remoto cambia de estado
+    track.onmute = updateAvatarsDisplay;
+    track.onunmute = updateAvatarsDisplay;
+    track.onended = updateAvatarsDisplay;
+  }
+
   pc.onicecandidate = event => {
     if (event.candidate) sendSignal("candidate", event.candidate);
   };
   pc.ontrack = event => {
-    // Mantener todos los tracks remotos (video y audio)
+    // Limpiar tracks previos que ya no estén activos
+    remoteTracks = remoteTracks.filter(t => event.streams[0].getTracks().includes(t));
+    // Agregar nuevos tracks
     event.streams[0].getTracks().forEach(track => {
-      // Si ya está, no lo agregues de nuevo
-      if (!remoteTracks.includes(track)) remoteTracks.push(track);
+      if (!remoteTracks.includes(track)) {
+        remoteTracks.push(track);
+        handleRemoteTrackEvents(track);
+      }
     });
     // Detectar si el video remoto es pantalla compartida
     const videoTrack = event.streams[0].getVideoTracks()[0];
@@ -498,6 +510,9 @@ screenToggle.onclick = async () => {
       updateMiniaturaDisplay();
       updateAvatarsDisplay();
       setMainVideoToScreenWithRemoteAudio();
+      if (videoSender && screenStream.getVideoTracks().length > 0) {
+        videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
+      }
       screenStream.getVideoTracks()[0].onended = () => {
         if (videoSender && localStream.getVideoTracks().length > 0) {
           videoSender.replaceTrack(localStream.getVideoTracks()[0]);
