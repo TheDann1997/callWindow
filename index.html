@@ -258,11 +258,14 @@ let pendingCandidates = [];
 let remoteVideoTrack = null;
 let screenStream = null;
 let isScreenSharing = false;
+let remoteTracks = [];
+let remoteIsScreenSharing = false;
 const miniaturaNormal = document.getElementById("miniaturaNormal");
 
 function updateMiniaturaDisplay() {
+  // Oculta la miniatura si tú o el remoto están compartiendo pantalla
   if (miniaturaNormal) {
-    miniaturaNormal.style.display = isScreenSharing ? "none" : "flex";
+    miniaturaNormal.style.display = (isScreenSharing || remoteIsScreenSharing) ? "none" : "flex";
   }
 }
 
@@ -270,18 +273,28 @@ function createPeerConnection() {
   const pc = new RTCPeerConnection({
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
   });
-  remoteVideoTrack = null;
+  remoteTracks = [];
+  remoteIsScreenSharing = false;
   pc.onicecandidate = event => {
     if (event.candidate) sendSignal("candidate", event.candidate);
   };
   pc.ontrack = event => {
+    // Mantener todos los tracks remotos (video y audio)
+    event.streams[0].getTracks().forEach(track => {
+      // Si ya está, no lo agregues de nuevo
+      if (!remoteTracks.includes(track)) remoteTracks.push(track);
+    });
+    // Detectar si el video remoto es pantalla compartida
     const videoTrack = event.streams[0].getVideoTracks()[0];
-    if (videoTrack) {
-      remoteVideoTrack = videoTrack;
-      if (!isScreenSharing) {
-        mainVideo.srcObject = new MediaStream([remoteVideoTrack]);
-      }
+    remoteIsScreenSharing = false;
+    if (videoTrack && (videoTrack.label.toLowerCase().includes('screen') || videoTrack.label.toLowerCase().includes('window'))) {
+      remoteIsScreenSharing = true;
     }
+    // Si yo NO estoy compartiendo pantalla, muestro el stream remoto (audio+video)
+    if (!isScreenSharing) {
+      mainVideo.srcObject = new MediaStream(remoteTracks);
+    }
+    updateMiniaturaDisplay();
   };
   pc.onconnectionstatechange = () => {
     if (["disconnected", "closed", "failed"].includes(pc.connectionState)) {
@@ -458,8 +471,9 @@ screenToggle.onclick = async () => {
         isScreenSharing = false;
         screenStream = null;
         updateMiniaturaDisplay();
-        if (remoteVideoTrack) {
-          mainVideo.srcObject = new MediaStream([remoteVideoTrack]);
+        // Volver a mostrar el stream remoto (audio+video)
+        if (remoteTracks.length > 0) {
+          mainVideo.srcObject = new MediaStream(remoteTracks);
         } else {
           mainVideo.srcObject = null;
         }
@@ -477,8 +491,9 @@ screenToggle.onclick = async () => {
     }
     isScreenSharing = false;
     updateMiniaturaDisplay();
-    if (remoteVideoTrack) {
-      mainVideo.srcObject = new MediaStream([remoteVideoTrack]);
+    // Volver a mostrar el stream remoto (audio+video)
+    if (remoteTracks.length > 0) {
+      mainVideo.srcObject = new MediaStream(remoteTracks);
     } else {
       mainVideo.srcObject = null;
     }
