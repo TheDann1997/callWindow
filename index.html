@@ -258,6 +258,13 @@ let pendingCandidates = [];
 let remoteVideoTrack = null;
 let screenStream = null;
 let isScreenSharing = false;
+const miniaturaNormal = document.getElementById("miniaturaNormal");
+
+function updateMiniaturaDisplay() {
+  if (miniaturaNormal) {
+    miniaturaNormal.style.display = isScreenSharing ? "none" : "flex";
+  }
+}
 
 function createPeerConnection() {
   const pc = new RTCPeerConnection({
@@ -439,19 +446,18 @@ screenToggle.onclick = async () => {
     try {
       screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       isScreenSharing = true;
+      updateMiniaturaDisplay();
       if (videoSender && screenStream.getVideoTracks().length > 0) {
         videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
       }
-      // Mostrar mi propia pantalla local en el video grande
       mainVideo.srcObject = new MediaStream([screenStream.getVideoTracks()[0]]);
-      // Cuando el usuario deja de compartir pantalla
       screenStream.getVideoTracks()[0].onended = () => {
         if (videoSender && localStream.getVideoTracks().length > 0) {
           videoSender.replaceTrack(localStream.getVideoTracks()[0]);
         }
         isScreenSharing = false;
         screenStream = null;
-        // Volver a mostrar el video remoto
+        updateMiniaturaDisplay();
         if (remoteVideoTrack) {
           mainVideo.srcObject = new MediaStream([remoteVideoTrack]);
         } else {
@@ -462,7 +468,6 @@ screenToggle.onclick = async () => {
       alert("No se pudo compartir pantalla: " + e);
     }
   } else {
-    // Detener compartir pantalla manualmente
     if (screenStream) {
       screenStream.getTracks().forEach(track => track.stop());
       screenStream = null;
@@ -471,7 +476,7 @@ screenToggle.onclick = async () => {
       videoSender.replaceTrack(localStream.getVideoTracks()[0]);
     }
     isScreenSharing = false;
-    // Volver a mostrar el video remoto
+    updateMiniaturaDisplay();
     if (remoteVideoTrack) {
       mainVideo.srcObject = new MediaStream([remoteVideoTrack]);
     } else {
