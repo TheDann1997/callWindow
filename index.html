@@ -375,28 +375,30 @@
     let remoteUserId = null;
     let pendingCandidates = [];
     let screenSender = null; // Para poder remover el track de pantalla luego
+    let remoteCameraTrack = null;
+    let remoteScreenTrack = null;
 
     function createPeerConnection() {
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
       });
-      remoteStream = new MediaStream();
+      remoteCameraTrack = null;
+      remoteScreenTrack = null;
       // No asignar a remoteVideo.srcObject, sino actualizar el stream en el layout cuando sea necesario
       pc.onicecandidate = event => {
         if (event.candidate) sendSignal("candidate", event.candidate);
       };
       pc.ontrack = event => {
-        let added = false;
         event.streams[0].getTracks().forEach(track => {
-          if (!remoteStream.getTracks().some(t => t.id === track.id)) {
-            remoteStream.addTrack(track);
-            added = true;
+          if (track.kind === 'video') {
+            if (track.label.toLowerCase().includes('screen') || track.label.toLowerCase().includes('window')) {
+              remoteScreenTrack = track;
+            } else {
+              remoteCameraTrack = track;
+            }
           }
         });
-        if (added) {
-          console.log('[ontrack] Nuevo track recibido, forzando updateLayout');
-          updateLayout();
-        }
+        updateLayout();
       };
       pc.onconnectionstatechange = () => {
         if (["disconnected", "closed", "failed"].includes(pc.connectionState)) {
@@ -587,8 +589,7 @@
       if (screenShareDiv) screenShareDiv.style.display = "none";
       if (videoMainContainer) videoMainContainer.style.display = "block";
       // Video grande: el de la otra persona (cámara)
-      if (typeof mainVideo !== 'undefined' && mainVideo && remoteStream) {
-        const remoteCameraTrack = getCameraTrack(remoteStream);
+      if (typeof mainVideo !== 'undefined' && mainVideo) {
         if (remoteCameraTrack) {
           // Creamos un nuevo MediaStream solo con la cámara remota
           const camStream = new MediaStream([remoteCameraTrack]);
@@ -612,12 +613,13 @@
         }
       }
       var miniaturasPanel = document.getElementById("miniaturasPanel");
-      if (miniaturasPanel) miniaturasPanel.style.display = "none";
+      if (miniaturasPanel) miniaturasPanel.style.display = "flex";
+      actualizarMiniaturasPanel();
     }
 
     function setLayoutScreenShare() {
       mainCall.classList.add("screen-mode");
-      // Mostrar pantalla compartida en el div especial, ocultar video principal
+      // Mostrar pantalla compartida si existe
       if (screenShareDiv) screenShareDiv.style.display = "block";
       if (videoMainContainer) videoMainContainer.style.display = "none";
       if (typeof screenShareVideo !== 'undefined' && screenShareVideo) {
@@ -627,9 +629,8 @@
           const tracks = screenStream.getVideoTracks();
           if (tracks.length > 0) screenTrack = tracks[0];
         } else {
-          // Receptor: toma el primer track de video disponible
-          const videoTracks = remoteStream ? remoteStream.getVideoTracks() : [];
-          if (videoTracks.length > 0) screenTrack = videoTracks[0];
+          // Receptor: usa remoteScreenTrack
+          screenTrack = remoteScreenTrack;
         }
         if (screenTrack) {
           screenShareVideo.srcObject = new MediaStream([screenTrack]);
