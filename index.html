@@ -268,11 +268,12 @@ function createPeerConnection() {
     if (event.candidate) sendSignal("candidate", event.candidate);
   };
   pc.ontrack = event => {
-    // Solo nos interesa el track de video remoto (cámara o pantalla)
     const videoTrack = event.streams[0].getVideoTracks()[0];
     if (videoTrack) {
       remoteVideoTrack = videoTrack;
-      mainVideo.srcObject = new MediaStream([remoteVideoTrack]);
+      if (!isScreenSharing) {
+        mainVideo.srcObject = new MediaStream([remoteVideoTrack]);
+      }
     }
   };
   pc.onconnectionstatechange = () => {
@@ -441,6 +442,8 @@ screenToggle.onclick = async () => {
       if (videoSender && screenStream.getVideoTracks().length > 0) {
         videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
       }
+      // Mostrar mi propia pantalla local en el video grande
+      mainVideo.srcObject = new MediaStream([screenStream.getVideoTracks()[0]]);
       // Cuando el usuario deja de compartir pantalla
       screenStream.getVideoTracks()[0].onended = () => {
         if (videoSender && localStream.getVideoTracks().length > 0) {
@@ -448,6 +451,12 @@ screenToggle.onclick = async () => {
         }
         isScreenSharing = false;
         screenStream = null;
+        // Volver a mostrar el video remoto
+        if (remoteVideoTrack) {
+          mainVideo.srcObject = new MediaStream([remoteVideoTrack]);
+        } else {
+          mainVideo.srcObject = null;
+        }
       };
     } catch (e) {
       alert("No se pudo compartir pantalla: " + e);
@@ -462,6 +471,12 @@ screenToggle.onclick = async () => {
       videoSender.replaceTrack(localStream.getVideoTracks()[0]);
     }
     isScreenSharing = false;
+    // Volver a mostrar el video remoto
+    if (remoteVideoTrack) {
+      mainVideo.srcObject = new MediaStream([remoteVideoTrack]);
+    } else {
+      mainVideo.srcObject = null;
+    }
   }
 };
   </script>
